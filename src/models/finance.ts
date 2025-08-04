@@ -1,7 +1,7 @@
 export interface UserFinancialData {
-    utilities: number;
     monthlyIncome: number;
     housing: number;
+    utilities: number;
     food: number;
     transportation: number;
     otherExpenses: number;

@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 
-import ThemeWrapper from '@/components/ThemeWrapper'; // ✅ ย้าย ThemeProvider ไปแยก
+import ThemeWrapper from '../components/ThemeWrapper'; // ✅ ย้าย ThemeProvider ไปแยก
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

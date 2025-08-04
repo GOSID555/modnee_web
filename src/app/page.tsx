@@ -7,10 +7,16 @@ import {
   Typography,
   Button,
 } from '@mui/material';
-import AllForm from '@/components/form/FromAll';
+import AllForm from '../components/form/FromAll';
 import { grey, purple } from '@mui/material/colors';
+import { useState } from 'react';
+import DebtProjectionTable from '@/components/result/DebtProjectionTable.tsx';
+import DebtProjectionChart from '@/components/result/DebtProjectionChart';
+import DownloadPdfButton from '@/components/result/Download_pdf';
+import DebtSummaryCards from '@/components/DebtSummaryCards';
 
 export default function HomePage() {
+  const [calculated, setCalculated] = useState(false);
   return (
     <>
       {/* Section 1: Hero (White Background) */}
@@ -42,36 +48,13 @@ export default function HomePage() {
         </Container>
       </Box>
 
-      {/* Section 2: Banner / Highlight (Light Gray Background) */}
+
+
+
+      {/* Section 2: Calculator Form (Gray Background) */}
       <Box
         sx={{
           bgcolor: grey[100],
-          py: 4,
-        }}
-      >
-        <Container maxWidth="md">
-          <Paper
-            elevation={0}
-            sx={{
-              bgcolor: grey[200],
-              borderRadius: 2,
-              height: 100,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Typography variant="body1" fontWeight={500}>
-              [Your Banner Message or Graphic]
-            </Typography>
-          </Paper>
-        </Container>
-      </Box>
-
-      {/* Section 3: Calculator Form (Gray Background) */}
-      <Box
-        sx={{
-          bgcolor: grey[50],
           py: 6,
         }}
       >
@@ -86,8 +69,20 @@ export default function HomePage() {
           </Box>
 
           <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-            <AllForm />
+            <AllForm calculated={calculated} setCalculated={setCalculated} />
           </Paper>
+          {calculated && (
+            <Box mt={4} id="pdf-content">
+              <Box>
+                <DebtSummaryCards />
+                <DebtProjectionChart />
+              </Box>
+              <DebtProjectionTable />
+              <Box sx={{ mt: 5, display: 'flex', justifyContent: 'center' }}>
+                <DownloadPdfButton />
+              </Box>
+            </Box>
+          )}
         </Container>
       </Box>
     </>

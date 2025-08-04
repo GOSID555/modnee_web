@@ -1,20 +1,29 @@
 'use client';
 
-import { Box, Typography, Paper, TextField, Stack, MenuItem, IconButton, Button, Divider } from '@mui/material';
-import { useState } from 'react';
+import {
+    Box, Typography, Paper, TextField, Stack, MenuItem,
+    IconButton, Button, Divider,
+} from '@mui/material';
+import { useCallback } from 'react';
 import DeleteIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import { v4 as uuidv4 } from 'uuid';
 
-const defaultDebt = {
-    type: 'Credit Card',
-    name: '',
-    balance: '',
-    rate: '',
-    minPayment: '',
-    monthlyPayment: '',
-};
+import useFinancialStore from '@/store/useFinancialStore';
+import { Debt } from '@/store/useFinancialStore';
+import { DebtType, defaultInterestMap } from '@/models/debt';
+
+const defaultDebt = (): Debt => ({
+    id: uuidv4(),
+    debtType: 'Credit Card',
+    debtName: '',
+    balance: 0,
+    interestType: defaultInterestMap['Credit Card'],
+    interestRate: 0,
+    monthlyPayment: 0,
+});
 
 const iconsMap: Record<string, React.ReactNode> = {
     'Credit Card': <CreditCardIcon sx={{ color: 'purple' }} />,
@@ -22,23 +31,26 @@ const iconsMap: Record<string, React.ReactNode> = {
 };
 
 export default function DebtDetailsForm() {
-    const [debts, setDebts] = useState([defaultDebt]);
+    const { debts, setDebts } = useFinancialStore();
 
     const addDebt = () => {
-        setDebts([...debts, defaultDebt]);
+        setDebts((prev) => [...prev, defaultDebt()]);
     };
 
-    const removeDebt = (index: number) => {
-        const updated = debts.filter((_, i) => i !== index);
-        setDebts(updated);
+    const removeDebt = (id: string) => {
+        setDebts((prev) => prev.filter((debt) => debt.id !== id));
     };
 
-    const handleChange = (index: number, field: string, value: string) => {
-        const updated = debts.map((debt, i) =>
-            i === index ? { ...debt, [field]: value } : debt
-        );
-        setDebts(updated);
-    };
+    const handleChange = useCallback(
+        (id: string, field: keyof Debt, value: any) => {
+            setDebts((prevDebts) =>
+                prevDebts.map((debt) =>
+                    debt.id === id ? { ...debt, [field]: value } : debt
+                )
+            );
+        },
+        [setDebts]
+    );
 
     return (
         <Box>
@@ -49,21 +61,25 @@ export default function DebtDetailsForm() {
                     size="small"
                     startIcon={<AddIcon />}
                     onClick={addDebt}
-                    sx={{ backgroundColor: '#f1e7ff', color: '#7e3af2', '&:hover': { backgroundColor: '#e9dfff' } }}
+                    sx={{
+                        backgroundColor: '#f1e7ff',
+                        color: '#7e3af2',
+                        '&:hover': { backgroundColor: '#e9dfff' },
+                    }}
                 >
                     Add Debt
                 </Button>
             </Box>
 
             <Stack spacing={3}>
-                {debts.map((debt, index) => (
-                    <Paper key={index} variant="outlined" sx={{ p: 2, borderRadius: 2, position: 'relative' }}>
+                {debts.map((debt) => (
+                    <Paper key={debt.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
                             <Stack direction="row" alignItems="center" spacing={1}>
-                                {iconsMap[debt.type]}
-                                <Typography fontWeight="bold">{debt.type}</Typography>
+                                {iconsMap[debt.debtType] ?? null}
+                                <Typography fontWeight="bold">{debt.debtType}</Typography>
                             </Stack>
-                            <IconButton size="small" onClick={() => removeDebt(index)}>
+                            <IconButton onClick={() => removeDebt(debt.id)} size="small">
                                 <DeleteIcon />
                             </IconButton>
                         </Stack>
@@ -75,18 +91,25 @@ export default function DebtDetailsForm() {
                                 <TextField
                                     select
                                     label="Debt Type"
-                                    value={debt.type}
-                                    onChange={(e) => handleChange(index, 'type', e.target.value)}
+                                    value={debt.debtType}
+                                    onChange={(e) => {
+                                        const selectedType = e.target.value as DebtType;
+                                        handleChange(debt.id, 'debtType', selectedType);
+                                        handleChange(debt.id, 'interestType', defaultInterestMap[selectedType]);
+                                    }}
                                     fullWidth
                                 >
-                                    <MenuItem value="Credit Card">Credit Card</MenuItem>
-                                    <MenuItem value="Car Loan">Car Loan</MenuItem>
+                                    {Object.keys(defaultInterestMap).map((type) => (
+                                        <MenuItem key={type} value={type}>
+                                            {type}
+                                        </MenuItem>
+                                    ))}
                                 </TextField>
 
                                 <TextField
                                     label="Debt Name"
-                                    value={debt.name}
-                                    onChange={(e) => handleChange(index, 'name', e.target.value)}
+                                    value={debt.debtName}
+                                    onChange={(e) => handleChange(debt.id, 'debtName', e.target.value)}
                                     fullWidth
                                 />
                             </Stack>
@@ -94,34 +117,52 @@ export default function DebtDetailsForm() {
                             <Stack direction="row" spacing={2}>
                                 <TextField
                                     label="Current Balance"
-                                    value={debt.balance}
-                                    onChange={(e) => handleChange(index, 'balance', e.target.value)}
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={debt.balance === 0 ? '' : debt.balance}
+                                    onChange={(e) => {
+                                        const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                                        handleChange(debt.id, 'balance', Number(cleaned));
+                                    }}
                                     fullWidth
                                     InputProps={{ startAdornment: <span>$&nbsp;</span> }}
                                 />
 
                                 <TextField
-                                    label="Interest Rate (%)"
-                                    value={debt.rate}
-                                    onChange={(e) => handleChange(index, 'rate', e.target.value)}
+                                    select
+                                    label="Interest Type"
+                                    value={debt.interestType}
+                                    onChange={(e) => handleChange(debt.id, 'interestType', e.target.value)}
                                     fullWidth
-                                    InputProps={{ startAdornment: <span>%&nbsp;</span> }}
-                                />
+                                >
+                                    <MenuItem value="Fixed">Fixed</MenuItem>
+                                    <MenuItem value="Reducing">Reducing</MenuItem>
+                                </TextField>
                             </Stack>
 
                             <Stack direction="row" spacing={2}>
                                 <TextField
-                                    label="Minimum Payment"
-                                    value={debt.minPayment}
-                                    onChange={(e) => handleChange(index, 'minPayment', e.target.value)}
+                                    label="Interest Rate (%)"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={debt.interestRate === 0 ? '' : debt.interestRate}
+                                    onChange={(e) => {
+                                        const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                                        handleChange(debt.id, 'interestRate', Number(cleaned));
+                                    }}
                                     fullWidth
-                                    InputProps={{ startAdornment: <span>$&nbsp;</span> }}
+                                    InputProps={{ startAdornment: <span>%&nbsp;</span> }}
                                 />
 
                                 <TextField
                                     label="Your Monthly Payment"
-                                    value={debt.monthlyPayment}
-                                    onChange={(e) => handleChange(index, 'monthlyPayment', e.target.value)}
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={debt.monthlyPayment === 0 ? '' : debt.monthlyPayment}
+                                    onChange={(e) => {
+                                        const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                                        handleChange(debt.id, 'monthlyPayment', Number(cleaned));
+                                    }}
                                     fullWidth
                                     InputProps={{ startAdornment: <span>$&nbsp;</span> }}
                                 />

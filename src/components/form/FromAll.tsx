@@ -1,35 +1,36 @@
 'use client';
 
 
-
+import { Box, Container } from '@mui/material';
 import CalculateButton from './CalculateButton';
-import { Box, Container, Typography } from '@mui/material';
 import IncomeExpenseForm from './Income_ExpenseForm';
 import DebtDetailsForm from './DebtDetails';
-import { UserFinancialData } from '@/models/finance';
-import { useState } from 'react';
-import { Debt } from '@/models/debt';
 
-export default function AllForm() {
-   
+type AllFormProps = {
+    calculated: boolean;
+    setCalculated: (value: boolean) => void;
+};
+export default function AllForm({ calculated, setCalculated }: AllFormProps) {
+
 
     return (
         <Container sx={{ display: 'flex', flexDirection: 'column' }}>
             <Container sx={{ display: 'flex', flexDirection: 'row' }}>
                 <Box sx={{ flex: 1 }}>
-                    <IncomeExpenseForm></IncomeExpenseForm>
+                    <IncomeExpenseForm />
                 </Box>
-                <Box sx={{ width: 30 }}></Box>
+                <Box sx={{ width: 30 }} />
                 <Box sx={{ flex: 1 }}>
-                    <DebtDetailsForm></DebtDetailsForm>
+                    <DebtDetailsForm />
                 </Box>
-
             </Container>
+
             <Box sx={{ height: 30 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CalculateButton></CalculateButton>
+
+            <Box textAlign="center" mt={4}>
+                <CalculateButton onClick={() => setCalculated(true)} /> {/* ✅ */}
             </Box>
-            
+
         </Container>
     );
 }
