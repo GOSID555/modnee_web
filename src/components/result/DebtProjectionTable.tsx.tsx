@@ -8,7 +8,7 @@ export default function DebtProjectionTable() {
     const data = calculateDebtProjection();
 
     return (
-        <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3 }}>
+        <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 7, padding: 5 }}>
             <Typography variant="h6" sx={{ p: 2 }}>Debt Payment Projection</Typography>
             <Table>
                 <TableHead>

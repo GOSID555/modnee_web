@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import useFinancialStore from '@/store/useFinancialStore';
+import { Paper } from '@mui/material';
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
 
@@ -42,8 +43,9 @@ export default function DebtProjectionChart() {
     };
 
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <Line data={data} options={options} />
-        </div>
+        <Paper sx={{ padding: 5, borderRadius: 7 }}>
+            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                <Line data={data} options={options} />
+            </div></Paper>
     );
 }

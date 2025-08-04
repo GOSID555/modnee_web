@@ -13,7 +13,7 @@ import { useState } from 'react';
 import DebtProjectionTable from '@/components/result/DebtProjectionTable.tsx';
 import DebtProjectionChart from '@/components/result/DebtProjectionChart';
 import DownloadPdfButton from '@/components/result/Download_pdf';
-import DebtSummaryCards from '@/components/DebtSummaryCards';
+import DebtSummaryCards from '@/components/result/DebtSummaryCards';
 
 export default function HomePage() {
   const [calculated, setCalculated] = useState(false);
@@ -68,7 +68,7 @@ export default function HomePage() {
             </Typography>
           </Box>
 
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 7 }}>
             <AllForm calculated={calculated} setCalculated={setCalculated} />
           </Paper>
           {calculated && (

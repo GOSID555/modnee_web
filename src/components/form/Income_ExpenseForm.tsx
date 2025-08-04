@@ -7,8 +7,7 @@ export default function IncomeExpenseForm() {
     const {
         financialData,
         setFinancialData,
-        calculateTotalExpenses,
-        calculateRemainingIncome,
+
     } = useFinancialStore();
 
     const handleChange = (field: keyof typeof financialData) =>
@@ -16,8 +15,7 @@ export default function IncomeExpenseForm() {
             setFinancialData({ [field]: Number(e.target.value) || 0 });
         };
 
-    const totalExpenses = calculateTotalExpenses();
-    const remainingIncome = calculateRemainingIncome();
+
 
     return (
         <Box>
@@ -34,10 +32,7 @@ export default function IncomeExpenseForm() {
                 <TextField label="Other Expenses" value={financialData.otherExpenses} onChange={handleChange('otherExpenses')} fullWidth />
             </Stack>
 
-            <Box mt={2}>
-                <Typography> Total Expenses: ${totalExpenses.toFixed(2)}</Typography>
-                <Typography> Remaining Income: <strong>${remainingIncome.toFixed(2)}</strong></Typography>
-            </Box>
+
         </Box>
     );
 }

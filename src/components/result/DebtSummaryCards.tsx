@@ -69,6 +69,7 @@ export default function DebtSummaryCards() {
                         p: 2,
                         borderLeft: `5px solid ${c.color}`,
                         minWidth: 200,
+                        borderRadius: 5
                     }}
                 >
                     <Typography variant="subtitle2" color="text.secondary">
