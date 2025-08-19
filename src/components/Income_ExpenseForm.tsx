@@ -31,7 +31,7 @@ export const Income_ExpenseForm: React.FC<Income_ExpenseFormProps> = ({ onSubmit
    */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: name === 'amount' ? parseFloat(value) || 0 : value
@@ -73,10 +73,10 @@ export const Income_ExpenseForm: React.FC<Income_ExpenseFormProps> = ({ onSubmit
    */
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    
+
     if (validateForm()) {
       onSubmit?.(formData)
-      
+
       // Reset form after successful submission
       setFormData({
         amount: 0,
@@ -87,30 +87,24 @@ export const Income_ExpenseForm: React.FC<Income_ExpenseFormProps> = ({ onSubmit
     }
   }
 
-  /**
-   * Handle amount increment via spinner
-   */
   const incrementAmount = () => {
     setFormData(prev => ({
       ...prev,
-      amount: Math.round((prev.amount + 0.01) * 100) / 100
+      amount: prev.amount + 1000
     }))
   }
 
-  /**
-   * Handle amount decrement via spinner
-   */
   const decrementAmount = () => {
     setFormData(prev => ({
       ...prev,
-      amount: Math.max(0, Math.round((prev.amount - 0.01) * 100) / 100)
+      amount: Math.max(0, prev.amount - 1000)
     }))
   }
 
   return (
     <div className="income-expense-form">
       <h2>Add Transaction</h2>
-      
+
       <form onSubmit={handleSubmit} className="form-container">
         {/* Transaction Type */}
         <div className="form-group">
