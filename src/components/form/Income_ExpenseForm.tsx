@@ -1,21 +1,19 @@
 'use client';
 
 import useFinancialStore from '@/store/useFinancialStore';
-import { Box, TextField, Typography, Stack } from '@mui/material';
+import { Box, Typography, Stack } from '@mui/material';
+import NumberInputField from './NumberInputField';
 
 export default function IncomeExpenseForm() {
     const {
         financialData,
         setFinancialData,
-
     } = useFinancialStore();
 
     const handleChange = (field: keyof typeof financialData) =>
-        (e: React.ChangeEvent<HTMLInputElement>) => {
-            setFinancialData({ [field]: Number(e.target.value) || 0 });
+        (value: number) => {
+            setFinancialData({ [field]: value });
         };
-
-
 
     return (
         <Box>
@@ -24,15 +22,56 @@ export default function IncomeExpenseForm() {
             </Typography>
 
             <Stack spacing={2}>
-                <TextField label="Monthly Income" value={financialData.monthlyIncome} onChange={handleChange('monthlyIncome')} fullWidth />
-                <TextField label="Housing Expenses" value={financialData.housing} onChange={handleChange('housing')} fullWidth />
-                <TextField label="Utilities" value={financialData.utilities} onChange={handleChange('utilities')} fullWidth />
-                <TextField label="Food & Groceries" value={financialData.food} onChange={handleChange('food')} fullWidth />
-                <TextField label="Transportation" value={financialData.transportation} onChange={handleChange('transportation')} fullWidth />
-                <TextField label="Other Expenses" value={financialData.otherExpenses} onChange={handleChange('otherExpenses')} fullWidth />
+                <NumberInputField
+                    label="Monthly Income"
+                    value={financialData.monthlyIncome}
+                    onChange={handleChange('monthlyIncome')}
+                    startAdornment="$"
+                    step={100}
+                    min={0}
+                />
+                <NumberInputField
+                    label="Housing Expenses"
+                    value={financialData.housing}
+                    onChange={handleChange('housing')}
+                    startAdornment="$"
+                    step={50}
+                    min={0}
+                />
+                <NumberInputField
+                    label="Utilities"
+                    value={financialData.utilities}
+                    onChange={handleChange('utilities')}
+                    startAdornment="$"
+                    step={25}
+                    min={0}
+                />
+                <NumberInputField
+                    label="Food & Groceries"
+                    value={financialData.food}
+                    onChange={handleChange('food')}
+                    startAdornment="$"
+                    step={25}
+                    min={0}
+                />
+                <NumberInputField
+                    label="Transportation"
+                    value={financialData.transportation}
+                    onChange={handleChange('transportation')}
+                    startAdornment="$"
+                    step={25}
+                    min={0}
+                />
+                <NumberInputField
+                    label="Other Expenses"
+                    value={financialData.otherExpenses}
+                    onChange={handleChange('otherExpenses')}
+                    startAdornment="$"
+                    step={25}
+                    min={0}
+                    allowNegative={true}
+                />
             </Stack>
-
-
         </Box>
     );
 }
