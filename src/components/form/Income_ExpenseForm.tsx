@@ -10,9 +10,22 @@ export default function IncomeExpenseForm() {
 
     } = useFinancialStore();
 
+    const parseNumericInput = (value: string): number => {
+        // Remove all non-numeric characters except decimal point
+        const cleanValue = value.replace(/[^\d.]/g, '');
+        
+        // If empty or invalid, return 0
+        if (!cleanValue || cleanValue === '.') return 0;
+        
+        // Parse as number and ensure it's positive
+        const parsed = parseFloat(cleanValue);
+        return isNaN(parsed) ? 0 : Math.abs(parsed);
+    };
+
     const handleChange = (field: keyof typeof financialData) =>
         (e: React.ChangeEvent<HTMLInputElement>) => {
-            setFinancialData({ [field]: Number(e.target.value) || 0 });
+            const numericValue = parseNumericInput(e.target.value);
+            setFinancialData({ [field]: numericValue });
         };
 
 
