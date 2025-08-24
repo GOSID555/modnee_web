@@ -1,31 +1,20 @@
-// ❌ ห้ามมี "use client" ในไฟล์นี้
+// src/app/layout.tsx
+'use client'
 
-import type { Metadata } from 'next';
-import { Geist } from 'next/font/google';
-import './globals.css';
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import theme from '@/components/ThemeWrapper'
 
-import ThemeWrapper from '../components/ThemeWrapper'; // ✅ ย้าย ThemeProvider ไปแยก
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-export const metadata: Metadata = {
-  title: 'แอปคำนวณหนี้',
-  description: 'เครื่องมือช่วยคำนวณการชำระหนี้แบบมีแผน',
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="th">
-      <body className={geistSans.variable}>
-        <ThemeWrapper>{children}</ThemeWrapper>
+    <html lang="en">
+      <body>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }
