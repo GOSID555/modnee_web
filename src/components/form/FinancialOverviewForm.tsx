@@ -1,4 +1,4 @@
-// src/components/form/FinancialOverviewForm.tsx
+
 'use client'
 
 import { Box, Paper, Typography } from '@mui/material'

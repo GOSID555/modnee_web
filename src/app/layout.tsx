@@ -1,19 +1,11 @@
 // src/app/layout.tsx
-'use client'
-
-import { ThemeProvider } from '@mui/material/styles'
-import CssBaseline from '@mui/material/CssBaseline'
-import theme from '@/components/ThemeWrapper'
-
+import ThemeWrapper from '@/components/ThemeWrapper'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          {children}
-        </ThemeProvider>
+        <ThemeWrapper>{children}</ThemeWrapper>
       </body>
     </html>
   )

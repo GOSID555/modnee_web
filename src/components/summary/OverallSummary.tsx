@@ -2,10 +2,10 @@
 
 import type { ReactNode } from 'react'
 import { Box, Paper, Typography } from '@mui/material'
-import PaidIcon from '@mui/icons-material/Paid'
-import SavingsIcon from '@mui/icons-material/Savings'
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import TrendingDownIcon from '@mui/icons-material/TrendingDown'
+import EventAvailableRounded from '@mui/icons-material/EventAvailableRounded'
+import ReceiptLongRounded from '@mui/icons-material/ReceiptLongRounded'
+import PaymentsRounded from '@mui/icons-material/PaymentsRounded'
+import SavingsRounded from '@mui/icons-material/SavingsRounded'
 import { formatMoney } from '@/utils/format'
 
 export type OverallSummaryProps = {
@@ -17,30 +17,61 @@ export type OverallSummaryProps = {
     totalInterest?: number
 }
 
-type TileProps = { icon: ReactNode; title: string; value: string }
+type TileProps = {
+    icon: ReactNode
+    title: string
+    value: string
+    caption?: string
+    color: 'indigo' | 'rose' | 'sky' | 'emerald'
+}
 
-function Tile({ icon, title, value }: TileProps) {
+const tone = {
+    indigo: { bg: '#EEF2FF', border: '#E0E7FF', fg: '#4338CA' },
+    rose: { bg: '#FFF1F2', border: '#FFE4E6', fg: '#BE123C' },
+    sky: { bg: '#E0F2FE', border: '#BAE6FD', fg: '#0369A1' },
+    emerald: { bg: '#ECFDF5', border: '#A7F3D0', fg: '#047857' },
+}
+
+function Tile({ icon, title, value, caption, color }: TileProps) {
+    const t = tone[color]
     return (
         <Paper
-            elevation={2}
+            elevation={0}
             sx={{
-                p: 3,
-                borderRadius: 2,
-                bgcolor: 'white',
-                border: '1px solid',
-                borderColor: 'grey.200',
+                p: 2.25,
+                borderRadius: 3,
+                border: `1px solid ${t.border}`,
+                background: t.bg,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2,
+                gap: 1.5,
                 width: '100%',
             }}
         >
-            <Box sx={{ color: 'grey.700' }}>{icon}</Box>
+            <Box
+                sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: '#fff',
+                    color: t.fg,
+                    border: `1px solid ${t.border}`,
+                }}
+            >
+                {icon}
+            </Box>
             <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: 'grey.600', fontSize: 13 }}>{title}</Typography>
-                <Typography sx={{ color: 'grey.900', fontWeight: 700, fontSize: 18 }}>
+                <Typography sx={{ fontSize: 12, color: '#334155' }}>{title}</Typography>
+                <Typography sx={{ fontSize: 20, fontWeight: 800, color: '#0F172A' }}>
                     {value}
                 </Typography>
+                {caption && (
+                    <Typography sx={{ fontSize: 12, color: '#64748B', mt: 0.25 }}>
+                        {caption}
+                    </Typography>
+                )}
             </Box>
         </Paper>
     )
@@ -55,44 +86,70 @@ export default function OverallSummary({
     totalInterest = 0,
 }: OverallSummaryProps) {
     return (
-        <Box sx={{ px: 3, mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'grey.900' }}>
-                Summary Overview
-            </Typography>
+        <Box sx={{ px: 0, mb: 3 }}>
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+                <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: 18 }}>
+                    Your Debt Payoff Summary
+                </Typography>
+                <Typography sx={{ color: '#475569', fontSize: 13, mt: 0.5 }}>
+                    Based on your current payment strategy, here’s your projected debt
+                    freedom timeline.
+                </Typography>
+            </Box>
 
-            {/* Flexbox แทน Grid: wrap อัตโนมัติ + ช่องไฟสวยงาม */}
+            {/* 4 metrics */}
             <Box
                 sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 2, // theme spacing (16px)
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(12, 1fr)',
+                    gap: 2,
                 }}
             >
-                {/* แต่ละ tile เป็น “คอลัมน์” ยืด/หดได้ตามความกว้าง */}
-                <Box sx={{ flex: '1 1 260px' }}>
-                    <Tile icon={<SavingsIcon />} title="Total Debt" value={`$ ${formatMoney(totalDebt)}`} />
-                </Box>
-
-                <Box sx={{ flex: '1 1 260px' }}>
-                    <Tile icon={<PaidIcon />} title="Total Monthly Payment" value={`$ ${formatMoney(totalMonthlyPayment)}`} />
-                </Box>
-
-                <Box sx={{ flex: '1 1 260px' }}>
-                    <Tile icon={<TrendingDownIcon />} title="Net Income (per month)" value={`$ ${formatMoney(netIncome)}`} />
-                </Box>
-
-                <Box sx={{ flex: '1 1 260px' }}>
+                <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 3' } }}>
                     <Tile
-                        icon={<CalendarMonthIcon />}
-                        title={`Debt-free in ~${Math.max(0, Math.round(payoffMonths))} mo.`}
+                        color="indigo"
+                        icon={<EventAvailableRounded />}
+                        title="Debt-Free Date"
                         value={debtFreeDate}
+                        caption={`${Math.max(0, Math.floor(payoffMonths / 12))} years, ${payoffMonths % 12} months`}
+                    />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 3' } }}>
+                    <Tile
+                        color="rose"
+                        icon={<ReceiptLongRounded />}
+                        title="Total Interest"
+                        value={`$${formatMoney(totalInterest)}`}
+                        caption="Across all debts"
+                    />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 3' } }}>
+                    <Tile
+                        color="sky"
+                        icon={<PaymentsRounded />}
+                        title="Monthly Payment"
+                        value={`$${formatMoney(totalMonthlyPayment)}`}
+                        caption="Total across debts"
+                    />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 3' } }}>
+                    <Tile
+                        color="emerald"
+                        icon={<SavingsRounded />}
+                        title="Net income"
+                        value={`$${formatMoney(netIncome)}`}
+                        caption="Available monthly"
                     />
                 </Box>
             </Box>
 
-            {!!totalInterest && (
-                <Typography sx={{ mt: 1, color: 'grey.600', fontSize: 13 }}>
-                    Estimated total interest: $ {formatMoney(totalInterest)}
+            {/* note */}
+            {!!totalDebt && (
+                <Typography sx={{ mt: 1.5, color: '#64748B', fontSize: 12 }}>
+                    Estimated total debt: ${formatMoney(totalDebt)}
                 </Typography>
             )}
         </Box>

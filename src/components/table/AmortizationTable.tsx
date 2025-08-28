@@ -1,133 +1,262 @@
-// src/components/table/AmortizationTable.tsx
 'use client'
 
 import { useMemo, useState } from 'react'
 import {
-    Box, Paper, Typography, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, TablePagination
+    Box,
+    Paper,
+    Typography,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Select,
+    MenuItem,
+    Button,
+    Stack,
+    Divider,
+    Pagination,
 } from '@mui/material'
-import type { AmortizationRow } from '@/utils/amortization'
+import KeyboardArrowLeftRoundedIcon from '@mui/icons-material/KeyboardArrowLeftRounded'
+import KeyboardArrowRightRoundedIcon from '@mui/icons-material/KeyboardArrowRightRounded'
 import { formatMoney } from '@/utils/format'
-
-import FullReportPdfButton from '@/components/export/FullReportPdfButton'
-import type { PerDebtSummary } from '@/components/summary/IndividualDebtSummary'
+import type { AmortizationRow } from '@/utils/amortization'
 import PdfExportButton from './PdfExportButton'
 
-type FullReportProps = {
-    overall: {
-        totalDebt: number
-        totalMonthlyPayment: number
-        netIncome: number
-        payoffMonths: number
-        debtFreeDate: string
-        totalInterest?: number
-    }
-    perDebt: PerDebtSummary[]
-    amortRows: AmortizationRow[]
-    chartRef?: React.RefObject<HTMLDivElement>
-    fileName?: string
+type RowEx = AmortizationRow & {
+    debtName?: string // ถ้ามีจะใช้แสดง & filter
 }
 
 type Props = {
     rows: AmortizationRow[]
     title?: string
-    /** ถ้าส่งมา จะแสดงปุ่ม Download PDF (Full Report) บนหัวตาราง */
-    fullReport?: FullReportProps
 }
 
 const ROWS_PER_PAGE = 30
 
-export default function AmortizationTable({ rows, title = 'Amortization Schedule', fullReport }: Props) {
-    const [page, setPage] = useState(0)
+export default function AmortizationTable({ rows, title = 'ตารางกำหนดชำระ' }: Props) {
+    const data: RowEx[] = useMemo(() => rows as RowEx[], [rows])
 
-    const paged = useMemo(() => {
-        const start = page * ROWS_PER_PAGE
-        return rows.slice(start, start + ROWS_PER_PAGE)
-    }, [rows, page])
+    // รายชื่อหนี้สำหรับตัวกรอง (ซ่อน dropdown ถ้าไม่มีชื่อหนี้)
+    const debtNames = useMemo(() => {
+        const s = new Set<string>()
+        data.forEach((r) => r.debtName && s.add(r.debtName))
+        return Array.from(s)
+    }, [data])
+
+    const [selectedDebt, setSelectedDebt] = useState<string>('ALL')
+    const [page, setPage] = useState<number>(1)
+
+    const filtered = useMemo(() => {
+        return selectedDebt === 'ALL'
+            ? data
+            : data.filter((r) => (r.debtName ?? '') === selectedDebt)
+    }, [selectedDebt, data])
+
+    const pageCount = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE))
+    const start = (page - 1) * ROWS_PER_PAGE
+    const paged = filtered.slice(start, start + ROWS_PER_PAGE)
+
+    const showingFrom = filtered.length === 0 ? 0 : start + 1
+    const showingTo = Math.min(filtered.length, start + paged.length)
 
     return (
-        <Box sx={{ px: 3, mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
-                <Typography variant="h6" sx={{ flex: 1, fontWeight: 600, color: 'grey.900' }}>
-                    {title}
+        <Paper
+            elevation={0}
+            sx={{
+                p: 2.5,
+                mt: 3,
+                borderRadius: 3,
+                border: '1px solid #E5E7EB',
+                background: '#FFFFFF',
+            }}
+        >
+            {/* Header */}
+            <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                justifyContent="space-between"
+                spacing={1.5}
+                sx={{ mb: 1.5 }}
+            >
+                <Box>
+                    <Typography sx={{ fontWeight: 800, color: '#0F172A' }}>
+                        {title}
+                    </Typography>
+                    <Typography sx={{ color: '#64748B', fontSize: 12 }}>
+                        รายละเอียดการชำระเงินในแต่ละเดือน
+                    </Typography>
+                </Box>
+
+                <Stack direction="row" spacing={1}>
+                    {debtNames.length > 0 && (
+                        <Select
+                            size="small"
+                            value={selectedDebt}
+                            onChange={(e) => {
+                                setPage(1)
+                                setSelectedDebt(e.target.value)
+                            }}
+                            sx={{
+                                minWidth: 160,
+                                background: '#F8FAFC',
+                                borderRadius: 2,
+                                '.MuiSelect-select': { py: 0.9 },
+                            }}
+                        >
+                            <MenuItem value="ALL">ทุกหนี้</MenuItem>
+                            {debtNames.map((n) => (
+                                <MenuItem key={n} value={n}>
+                                    {n}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    )}
+
+                    {/* ปุ่ม Export PDF สำหรับตาราง */}
+                    <PdfExportButton rows={filtered as any} />
+                </Stack>
+            </Stack>
+
+            <Divider sx={{ mb: 1.5 }} />
+
+            {/* Table */}
+            <Table size="small" aria-label="amortization schedule">
+                <TableHead>
+                    <TableRow
+                        sx={{
+                            '& th': {
+                                background: '#F8FAFC',
+                                color: '#94A3B8',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                borderBottom: '1px solid #E2E8F0',
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.4,
+                            },
+                        }}
+                    >
+                        <TableCell>เดือนที่</TableCell>
+                        {debtNames.length > 0 && <TableCell>หนี้</TableCell>}
+                        <TableCell align="right">เงินต้น (฿)</TableCell>
+                        <TableCell align="right">ดอกเบี้ย (฿)</TableCell>
+                        <TableCell align="right">ยอดชำระ/เดือน (฿)</TableCell>
+                        <TableCell align="right">ยอดคงเหลือ (฿)</TableCell>
+                    </TableRow>
+                </TableHead>
+
+                <TableBody>
+                    {paged.map((r, i) => (
+                        <TableRow
+                            key={`${r.month}-${i}`}
+                            hover
+                            sx={{
+                                '& td': {
+                                    borderBottom: '1px solid #F1F5F9',
+                                    fontSize: 13.5,
+                                    color: '#0F172A',
+                                },
+                                background: i % 2 === 0 ? '#FFFFFF' : '#FBFDFF',
+                            }}
+                        >
+                            <TableCell sx={{ color: '#475569' }}>{r.month}</TableCell>
+                            {debtNames.length > 0 && (
+                                <TableCell sx={{ color: '#0F172A' }}>
+                                    {(r as RowEx).debtName ?? '–'}
+                                </TableCell>
+                            )}
+                            <TableCell align="right">
+                                ฿ {formatMoney((r as any).principal ?? (r as any).principalPaid ?? 0)}
+                            </TableCell>
+                            <TableCell align="right" sx={{ color: '#EF4444', fontWeight: 600 }}>
+                                ฿ {formatMoney((r as any).interest ?? (r as any).interestPaid ?? 0)}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600 }}>
+                                ฿ {formatMoney((r as any).payment ?? (r as any).monthlyDebtPayment ?? 0)}
+                            </TableCell>
+                            <TableCell align="right">
+                                ฿ {formatMoney((r as any).balance ?? (r as any).remainingDebt ?? 0)}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+
+                    {paged.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={debtNames.length > 0 ? 6 : 5} align="center" sx={{ py: 4, color: 'grey.600' }}>
+                                ไม่พบข้อมูล
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+
+            {/* Footer / Pagination */}
+            <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                alignItems={{ xs: 'flex-start', md: 'center' }}
+                justifyContent="space-between"
+                spacing={1.5}
+                sx={{ mt: 1.5 }}
+            >
+                <Typography sx={{ color: '#64748B', fontSize: 12 }}>
+                    แสดง {showingFrom.toLocaleString()}–{showingTo.toLocaleString()} จาก{' '}
+                    {filtered.length.toLocaleString()} รายการชำระ
                 </Typography>
 
-                {/* ⬇️ ปุ่มโหลด PDF ทั้งหน้า (ถ้าส่ง fullReport มา) */}
-                {fullReport && (
-                    <FullReportPdfButton
-                        overall={fullReport.overall}
-                        perDebt={fullReport.perDebt}
-                        amortRows={fullReport.amortRows}
-                        chartRef={fullReport.chartRef}
-                        fileName={fullReport.fileName ?? 'debt-report.pdf'}
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<KeyboardArrowLeftRoundedIcon />}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            borderColor: '#E2E8F0',
+                            color: '#334155',
+                            '&:hover': { borderColor: '#CBD5E1', background: '#F8FAFC' },
+                        }}
+                    >
+                        ก่อนหน้า
+                    </Button>
+
+                    <Pagination
+                        count={pageCount}
+                        page={page}
+                        onChange={(_, p) => setPage(p)}
+                        size="small"
+                        siblingCount={1}
+                        boundaryCount={1}
+                        sx={{
+                            '.MuiPaginationItem-root': { borderRadius: 2, color: '#334155' },
+                            '.Mui-selected': {
+                                background: '#EEF2FF !important',
+                                color: '#4338CA',
+                                border: '1px solid #E0E7FF',
+                                fontWeight: 700,
+                            },
+                        }}
                     />
-                )}
 
-                {/* ปุ่ม export เฉพาะตาราง */}
-                <PdfExportButton rows={rows} />
-            </Box>
-
-            <Paper
-                elevation={2}
-                sx={{
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'grey.200',
-                    overflow: 'hidden',
-                }}
-            >
-                <TableContainer sx={{ maxHeight: 560 }}>
-                    <Table stickyHeader size="small" aria-label="amortization table">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell align="right">Month</TableCell>
-                                <TableCell align="right">Income</TableCell>
-                                <TableCell align="right">Expenses</TableCell>
-                                <TableCell align="right">Debt Payment</TableCell>
-                                <TableCell align="right">Principal</TableCell>
-                                <TableCell align="right">Interest</TableCell>
-                                <TableCell align="right">Remaining</TableCell>
-                                <TableCell align="right">Cumulative Paid</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {paged.map((r) => (
-                                <TableRow key={r.month} hover>
-                                    <TableCell align="right">{r.month}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.income)}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.expenses)}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.monthlyDebtPayment)}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.principalPaid)}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.interestPaid)}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.remainingDebt)}</TableCell>
-                                    <TableCell align="right">$ {formatMoney(r.cumulativePaid)}</TableCell>
-                                </TableRow>
-                            ))}
-                            {paged.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'grey.600' }}>
-                                        No data
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-
-                <TablePagination
-                    component="div"
-                    count={rows.length}
-                    page={page}
-                    onPageChange={(_, p) => setPage(p)}
-                    rowsPerPage={ROWS_PER_PAGE}
-                    rowsPerPageOptions={[ROWS_PER_PAGE]}
-                    sx={{
-                        borderTop: '1px solid',
-                        borderColor: 'grey.200',
-                        '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': { m: 1 },
-                    }}
-                />
-            </Paper>
-        </Box>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        endIcon={<KeyboardArrowRightRoundedIcon />}
+                        onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                        disabled={page >= pageCount}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            borderColor: '#E2E8F0',
+                            color: '#334155',
+                            '&:hover': { borderColor: '#CBD5E1', background: '#F8FAFC' },
+                        }}
+                    >
+                        ถัดไป
+                    </Button>
+                </Stack>
+            </Stack>
+        </Paper>
     )
 }
