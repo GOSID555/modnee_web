@@ -1,4 +1,3 @@
-
 'use client'
 
 import { Box, Paper, Typography } from '@mui/material'
@@ -20,13 +19,23 @@ export default function FinancialOverviewForm({
     return (
         <Box sx={{ px: 3, mb: 4 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'grey.900' }}>
-                Personal Financial Overview
+                กระแสเงินสดรายเดือน
             </Typography>
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                <Paper elevation={2} sx={{ p: 3, flex: '1 1 320px', borderRadius: 2, bgcolor: 'white', border: '1px solid', borderColor: 'grey.200' }}>
+                <Paper
+                    elevation={2}
+                    sx={{
+                        p: 3,
+                        flex: '1 1 320px',
+                        borderRadius: 2,
+                        bgcolor: 'white',
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                    }}
+                >
                     <Typography sx={{ mb: 1, color: 'grey.700', fontSize: 15 }}>
-                        Monthly Income
+                        รายรับต่อเดือน
                     </Typography>
                     <NumericTextField
                         fullWidth
@@ -38,9 +47,19 @@ export default function FinancialOverviewForm({
                     />
                 </Paper>
 
-                <Paper elevation={2} sx={{ p: 3, flex: '1 1 320px', borderRadius: 2, bgcolor: 'white', border: '1px solid', borderColor: 'grey.200' }}>
+                <Paper
+                    elevation={2}
+                    sx={{
+                        p: 3,
+                        flex: '1 1 320px',
+                        borderRadius: 2,
+                        bgcolor: 'white',
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                    }}
+                >
                     <Typography sx={{ mb: 1, color: 'grey.700', fontSize: 15 }}>
-                        Monthly Expenses
+                        รายจ่ายต่อเดือน
                     </Typography>
                     <NumericTextField
                         fullWidth

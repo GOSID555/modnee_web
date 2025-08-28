@@ -1,209 +1,283 @@
 // src/hooks/useDebtCalculator.ts
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+
+/** ---------- ชนิดจากแหล่งกลาง (อย่าประกาศซ้ำในไฟล์นี้) ---------- */
 import type {
-    DebtUI, DebtModel, PerDebtSummary, OverallSummary,
-    ScheduleRow, ValidationIssue,
+    DebtUI,
+    ScheduleRow,
+    ValidationIssue,
+    PerDebtSummary,
+    OverallSummary,
 } from '@/types/debt'
-import { toNumber } from '@/utils/format'
+import type { ChartPoint } from '@/utils/chartData'
+
+/** ---------- ฟังก์ชันคำนวณหลักจาก utils/finance ---------- */
 import {
-    addMonths, aggregateSchedules, resolveReducingByMode,
-    scheduleReducing, scheduleFlat, scheduleRevolving,
-    round2, minPaymentForRevolving, makeIssue
+    round2,
+    addMonths,
+    scheduleReducing,
+    scheduleFlat,
+    scheduleRevolving,
+    resolveReducingByMode,
+    aggregateSchedules,
+    makeIssue,
 } from '@/types/finance'
 
-/** จุดข้อมูลสำหรับกราฟ (โครงสร้างตรงกับคอมโพเนนต์กราฟของคุณ) */
-export type ChartPoint = {
-    month: number
-    label: string
-    income: number
-    expenses: number
-    remainingDebt: number
-    paidToDate: number
+/* =========================================================================
+   ตัวช่วยทั่วไป
+   ========================================================================= */
+const toNumber = (v: string | number | undefined | null): number => {
+    if (v === undefined || v === null) return 0
+    if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+    const s = String(v).trim().replace(/,/g, '')
+    const n = Number(s)
+    return Number.isFinite(n) ? n : 0
 }
 
-function toModel(ui: DebtUI): DebtModel {
-    return {
-        id: ui.id,
-        name: ui.name || 'Debt',
-        category: ui.category,
-        method: ui.method,
-        amount: toNumber(ui.amount),
-        interestRate: toNumber(ui.interestRate),
-        term: ui.term ? Math.round(toNumber(ui.term)) : undefined,
-        monthlyPayment: ui.monthlyPayment ? toNumber(ui.monthlyPayment) : undefined,
-        lockMode: ui.lockMode ?? 'term',
-        startDate: ui.startDate || undefined,
-        allocation: ui.allocation,
-        minPct: ui.minPct ? toNumber(ui.minPct) / 100 : undefined,
-        minFloor: ui.minFloor ? toNumber(ui.minFloor) : undefined,
-    }
+const toPercentFraction = (percentStr?: string | number) =>
+    toNumber(percentStr) / 100
+
+/* =========================================================================
+   Hook: useDebtCalculator
+   ========================================================================= */
+type CalcPayload = {
+    incomeStr: string
+    expensesStr: string
+    debtsUI: DebtUI[]
 }
 
-function buildChartData(income: number, expenses: number, schedule: ScheduleRow[]): ChartPoint[] {
-    let cumulative = 0
-    return schedule.map(r => {
-        cumulative += r.payment
-        return {
-            month: r.month,
-            label: String(r.month),
-            income,
-            expenses,
-            remainingDebt: round2(r.balance),
-            paidToDate: round2(cumulative),
-        }
-    })
-}
+type IssuesByDebt = Record<string, ValidationIssue[]>
 
-export function useDebtCalculator() {
+export default function useDebtCalculator() {
+    /** state ผลลัพธ์ */
     const [overall, setOverall] = useState<OverallSummary | null>(null)
     const [perDebt, setPerDebt] = useState<PerDebtSummary[]>([])
     const [schedule, setSchedule] = useState<ScheduleRow[]>([])
     const [chartData, setChartData] = useState<ChartPoint[]>([])
-    const [issues, setIssues] = useState<Record<string, ValidationIssue[]>>({})
+    const [issues, setIssues] = useState<IssuesByDebt>({})
 
-    const reset = () => {
+    /** ล้างผลคำนวณ */
+    const reset = useCallback(() => {
         setOverall(null)
         setPerDebt([])
         setSchedule([])
         setChartData([])
         setIssues({})
-    }
+    }, [])
 
-    /** คำนวณทั้งหมด (เรียกตอนกด Calculate ที่หน้า page) */
-    const calculate = (params: {
-        incomeStr: string
-        expensesStr: string
-        debtsUI: DebtUI[]
-    }) => {
-        const income = toNumber(params.incomeStr)
-        const expenses = toNumber(params.expensesStr)
-        const netIncome = income - expenses
-        const models = params.debtsUI.map(toModel)
+    /** สร้างแถวตารางให้ UI ใช้ (map schedule → table rows) */
+    const makeTableRows = useCallback(
+        (sched: ScheduleRow[], income: number, expenses: number) => {
+            let cumulative = 0
+            return sched.map((r) => {
+                cumulative = round2(cumulative + r.payment)
+                return {
+                    month: r.month,
+                    income,
+                    expenses,
+                    monthlyDebtPayment: r.payment,
+                    principalPaid: r.principal,
+                    interestPaid: r.interest,
+                    remainingDebt: r.balance,
+                    cumulativePaid: cumulative,
+                }
+            })
+        },
+        []
+    )
 
-        const per: PerDebtSummary[] = []
-        const schedules: ScheduleRow[][] = []
-        const issueMap: Record<string, ValidationIssue[]> = {}
+    /** คำนวณหลัก */
+    const calculate = useCallback(
+        ({ incomeStr, expensesStr, debtsUI }: CalcPayload) => {
+            // 1) แปลงรายรับ/รายจ่าย
+            const income = toNumber(incomeStr)
+            const expenses = toNumber(expensesStr)
 
-        for (const d of models) {
-            const warn: ValidationIssue[] = []
-            let usedPMT = 0
-            let months = d.term ?? 0
-            let totalInterest = 0
-            let rows: ScheduleRow[] = []
-            let implied: number | undefined
+            // 2) วนต่อหนี้แต่ละก้อน
+            const allSchedules: ScheduleRow[][] = []
+            const perDebtOut: PerDebtSummary[] = []
+            const issueMap: IssuesByDebt = {}
 
-            switch (d.method) {
-                case 'reducing': {
-                    const resolved = resolveReducingByMode({
-                        principal: d.amount,
-                        apr: d.interestRate,
-                        lock: d.lockMode,
-                        termMonths: d.term,
-                        pmtOverride: d.monthlyPayment,
+            for (const d of debtsUI) {
+                const id = d.id
+                const P = toNumber(d.amount)
+                const apr = toNumber(d.interestRate)
+                const method = (d.method ?? 'reducing') as PerDebtSummary['method']
+                const lock = (d.lockMode ?? 'term') as 'term' | 'payment'
+                const nInput = Math.max(0, Math.round(toNumber(d.term)))
+                const pmtOverride =
+                    d.monthlyPayment !== undefined && d.monthlyPayment !== ''
+                        ? toNumber(d.monthlyPayment)
+                        : undefined
+                const start = d.startDate || undefined
+
+                let myIssues: ValidationIssue[] = []
+                let rows: ScheduleRow[] = []
+                let totalInterest = 0
+                let pmt = 0
+                let months = 0
+
+                if (P <= 0) {
+                    // วงเงิน 0 → ข้าม
+                    allSchedules.push([])
+                    issueMap[id] = []
+                    perDebtOut.push({
+                        id,
+                        name: d.name || '',
+                        method,
+                        amount: 0,
+                        interestRate: apr,
+                        monthlyPayment: 0,
+                        term: 0,
+                        debtFreeDate: start ? addMonths(start, 0) : '',
+                        totalInterest: 0,
                     })
-                    if (!resolved.ok) {
-                        issueMap[d.id] = resolved.issues
-                        continue
-                    }
-                    usedPMT = resolved.pmt
-                    months = resolved.months
-                    if (resolved.issues?.length) warn.push(...resolved.issues)
-
-                    const sch = scheduleReducing(d.amount, d.interestRate, months, usedPMT)
-                    rows = sch.rows
-                    totalInterest = sch.totalInterest
-                    implied = resolved.impliedMonths
-                    break
-                }
-
-                case 'flat': {
-                    if (!d.term || d.term <= 0) {
-                        issueMap[d.id] = [makeIssue('INPUT_MISSING')]
-                        continue
-                    }
-                    const sch = scheduleFlat(d.amount, d.interestRate, d.term, d.allocation ?? 'rule78')
-                    rows = sch.rows
-                    months = rows.length
-                    usedPMT = sch.pmt
-                    totalInterest = sch.totalInterest
-                    break
-                }
-
-                case 'revolving': {
-                    const minPct = d.minPct ?? 0.03
-                    const minFloor = d.minFloor ?? 200
-                    const override = d.lockMode === 'payment' ? d.monthlyPayment : undefined
-                    if (override != null) {
-                        const minReq = minPaymentForRevolving(d.amount, minPct, minFloor)
-                        if (override < minReq) {
-                            warn.push(makeIssue('BELOW_MIN_PAYMENT', { minRequired: round2(minReq) }))
-                        }
-                    }
-                    const sch = scheduleRevolving({
-                        balance0: d.amount,
-                        apr: d.interestRate,
-                        minPct,
-                        minFloor,
-                        overridePayment: override,
-                    })
-                    rows = sch.rows
-                    months = rows.length
-                    usedPMT = rows[0]?.payment ?? 0
-                    totalInterest = sch.totalInterest
-                    break
-                }
-
-                default:
-                    issueMap[d.id] = [makeIssue('INPUT_MISSING')]
                     continue
+                }
+
+                if (method === 'reducing') {
+                    const r =
+                        lock === 'term'
+                            ? resolveReducingByMode({
+                                principal: P,
+                                apr,
+                                lock: 'term',
+                                termMonths: nInput,
+                                pmtOverride,
+                            })
+                            : resolveReducingByMode({
+                                principal: P,
+                                apr,
+                                lock: 'payment',
+                                pmtOverride,
+                            })
+
+                    if (!r.ok) {
+                        myIssues = r.issues
+                        // สร้าง schedule ว่างๆ เพื่อให้รวมได้
+                        rows = []
+                        totalInterest = 0
+                        pmt = pmtOverride ?? 0
+                        months = nInput || 0
+                    } else {
+                        myIssues = r.issues ?? []
+                        months = r.months
+                        pmt = r.pmt
+                        const s = scheduleReducing(P, apr, months, pmt)
+                        rows = s.rows
+                        totalInterest = s.totalInterest
+                    }
+                } else if (method === 'flat') {
+                    const s = scheduleFlat(
+                        P,
+                        apr, // flat rate
+                        Math.max(1, nInput),
+                        d.allocation ?? 'rule78'
+                    )
+                    rows = s.rows
+                    totalInterest = s.totalInterest
+                    pmt = s.pmt
+                    months = rows.length
+                } else {
+                    // revolving / credit card
+                    const s = scheduleRevolving({
+                        balance0: P,
+                        apr,
+                        minPct: toPercentFraction(d.minPct),
+                        minFloor: toNumber(d.minFloor) || 200,
+                        overridePayment: pmtOverride,
+                        monthsLimit: 360,
+                    })
+                    rows = s.rows
+                    totalInterest = s.totalInterest
+                    months = rows.length
+                    pmt = rows[0]?.payment ?? 0
+                    // ถ้าจ่ายต่ำกว่าดอกขั้นต่ำ → เตือน
+                    if (rows.length > 0 && pmt <= round2(P * (apr / 100 / 365) * 30)) {
+                        myIssues.push(makeIssue('BELOW_MIN_PAYMENT', { minRequired: rows[0].payment }))
+                    }
+                }
+
+                allSchedules.push(rows)
+                issueMap[id] = myIssues
+
+                perDebtOut.push({
+                    id,
+                    name: d.name || '',
+                    method,
+                    amount: P,
+                    interestRate: apr,
+                    monthlyPayment: round2(pmt),
+                    term: months,
+                    debtFreeDate: start ? addMonths(start, months) : '',
+                    totalInterest: round2(totalInterest),
+                })
             }
 
-            schedules.push(rows)
+            // 3) รวมตารางทุกหนี้
+            const merged = aggregateSchedules(allSchedules)
 
-            per.push({
-                id: d.id,
-                name: d.name,
-                method: d.method,
-                amount: d.amount,
-                interestRate: d.interestRate,
-                term: months,
-                monthlyPayment: round2(usedPMT),
-                debtFreeDate: addMonths(d.startDate, months),
-                totalInterest: round2(totalInterest),
-                impliedMonths: implied,
-                warnings: warn.length ? warn : undefined,
+            // 4) ทำ chartData
+
+            let cum = 0
+            const chart: ChartPoint[] = merged.map((r) => {
+                cum = round2(cum + r.payment)
+                return {
+                    month: r.month,
+                    label: `M${r.month}`,
+                    remainingDebt: r.balance,  // ✅ ชื่อฟิลด์ตรงกับ type
+                    paidToDate: cum,
+                    income,
+                    expenses,
+                }
             })
-        }
+            setChartData(chart)
 
-        // รวมตารางจากทุกหนี้
-        const agg = aggregateSchedules(schedules)
+            // 5) ภาพรวม summary
+            const totalDebt = debtsUI.reduce((s, d) => s + toNumber(d.amount), 0)
+            const totalMonthlyPayment = round2(merged[0]?.payment ?? 0) // ประมาณการเดือนแรกของยอดรวม
+            const payoffMonths = merged.length
+            const debtFreeDate = debtsUI[0]?.startDate
+                ? addMonths(debtsUI[0].startDate!, payoffMonths)
+                : ''
 
-        // ภาพรวม
-        const totalDebt = models.reduce((s, x) => s + x.amount, 0)
-        const totalMonthlyPayment = per.reduce((s, x) => s + x.monthlyPayment, 0)
-        const payoffMonths = agg.length
-        const debtFreeDate = addMonths(undefined, payoffMonths)
-        const totalInterestAll = round2(per.reduce((s, x) => s + (x.totalInterest ?? 0), 0))
+            const totalInterestAll = round2(
+                perDebtOut.reduce((s, x) => s + (x.totalInterest ?? 0), 0)
+            )
 
-        const ov: OverallSummary = {
-            totalDebt: round2(totalDebt),
-            totalMonthlyPayment: round2(totalMonthlyPayment),
-            netIncome: round2(netIncome),
-            payoffMonths,
-            debtFreeDate,
-            totalInterest: totalInterestAll,
-        }
+            const overallOut: OverallSummary = {
+                totalDebt: round2(totalDebt),
+                totalMonthlyPayment,
+                netIncome: round2(income - expenses),
+                payoffMonths,
+                debtFreeDate,
+                totalInterest: totalInterestAll,
+            }
 
-        setPerDebt(per)
-        setSchedule(agg)
-        setChartData(buildChartData(income, expenses, agg))
-        setOverall(ov)
-        setIssues(issueMap)
+            // 6) set states
+            setIssues(issueMap)
+            setPerDebt(perDebtOut)
+            setSchedule(merged)
+            setChartData(chart)
+            setOverall(overallOut)
+        },
+        []
+    )
 
-        return { overall: ov, perDebt: per, schedule: agg, chartData: buildChartData(income, expenses, agg), issues: issueMap }
-    }
-
-    return { overall, perDebt, schedule, chartData, issues, calculate, reset }
+    /** memo กำกับค่าที่ส่งออก */
+    return useMemo(
+        () => ({
+            overall,
+            perDebt,
+            schedule,
+            chartData,
+            issues,
+            calculate,
+            reset,
+            makeTableRows,
+        }),
+        [overall, perDebt, schedule, chartData, issues, calculate, reset, makeTableRows]
+    )
 }

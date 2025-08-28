@@ -1,3 +1,4 @@
+// src/components/summary/OverallSummary.tsx
 'use client'
 
 import type { ReactNode } from 'react'
@@ -85,15 +86,17 @@ export default function OverallSummary({
     debtFreeDate,
     totalInterest = 0,
 }: OverallSummaryProps) {
+    const years = Math.max(0, Math.floor(payoffMonths / 12))
+    const months = Math.max(0, payoffMonths % 12)
+
     return (
         <Box sx={{ px: 0, mb: 3 }}>
             <Box sx={{ textAlign: 'center', mb: 2 }}>
                 <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: 18 }}>
-                    Your Debt Payoff Summary
+                    สรุปการปลดหนี้ของคุณ
                 </Typography>
                 <Typography sx={{ color: '#475569', fontSize: 13, mt: 0.5 }}>
-                    Based on your current payment strategy, here’s your projected debt
-                    freedom timeline.
+                    คาดการณ์เส้นทางการปลดหนี้จากข้อมูลและแผนการชำระปัจจุบันของคุณ
                 </Typography>
             </Box>
 
@@ -109,9 +112,9 @@ export default function OverallSummary({
                     <Tile
                         color="indigo"
                         icon={<EventAvailableRounded />}
-                        title="Debt-Free Date"
+                        title="วันที่คาดว่าจะปลดหนี้"
                         value={debtFreeDate}
-                        caption={`${Math.max(0, Math.floor(payoffMonths / 12))} years, ${payoffMonths % 12} months`}
+                        caption={`${years} ปี ${months} เดือน`}
                     />
                 </Box>
 
@@ -119,9 +122,9 @@ export default function OverallSummary({
                     <Tile
                         color="rose"
                         icon={<ReceiptLongRounded />}
-                        title="Total Interest"
-                        value={`$${formatMoney(totalInterest)}`}
-                        caption="Across all debts"
+                        title="ดอกเบี้ยรวมโดยประมาณ"
+                        value={`฿${formatMoney(totalInterest)}`}
+                        caption="รวมทุกหนี้"
                     />
                 </Box>
 
@@ -129,9 +132,9 @@ export default function OverallSummary({
                     <Tile
                         color="sky"
                         icon={<PaymentsRounded />}
-                        title="Monthly Payment"
-                        value={`$${formatMoney(totalMonthlyPayment)}`}
-                        caption="Total across debts"
+                        title="ยอดชำระต่อเดือน"
+                        value={`฿${formatMoney(totalMonthlyPayment)}`}
+                        caption="รวมทุกหนี้"
                     />
                 </Box>
 
@@ -139,17 +142,16 @@ export default function OverallSummary({
                     <Tile
                         color="emerald"
                         icon={<SavingsRounded />}
-                        title="Net income"
-                        value={`$${formatMoney(netIncome)}`}
-                        caption="Available monthly"
+                        title="เงินคงเหลือต่อเดือน"
+                        value={`฿${formatMoney(netIncome)}`}
+                        caption="หลังหักรายจ่าย"
                     />
                 </Box>
             </Box>
 
-            {/* note */}
             {!!totalDebt && (
                 <Typography sx={{ mt: 1.5, color: '#64748B', fontSize: 12 }}>
-                    Estimated total debt: ${formatMoney(totalDebt)}
+                    ยอดหนี้รวมโดยประมาณ: ฿{formatMoney(totalDebt)}
                 </Typography>
             )}
         </Box>

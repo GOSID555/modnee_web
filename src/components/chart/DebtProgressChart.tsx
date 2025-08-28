@@ -1,3 +1,4 @@
+// src/components/chart/DebtProgressChart.tsx
 'use client'
 
 import {
@@ -12,11 +13,16 @@ import {
 } from 'recharts'
 import { Paper, Box, Typography } from '@mui/material'
 import { formatMoney } from '@/utils/format'
-import type { ChartPoint } from '@/utils/chartData' // ใช้อยู่แล้วในโปรเจกต์
+import type { ChartPoint } from '@/utils/chartData'
 
-type Props = { data: ChartPoint[]; title?: string }
+type Props = {
+    data: ChartPoint[]
+    title?: string
+    /** ถ้าอยากเปลี่ยนสัญลักษณ์เงิน ใส่ได้ เช่น "$" | "฿" | "" */
+    currency?: string
+}
 
-/** พยายาม map ชื่อคีย์อัตโนมัติให้เข้ากับ data ที่มีอยู่ */
+/** map ชื่อคีย์อัตโนมัติให้เข้ากับ data */
 function pickKey(obj: any, candidates: string[], fallback: string) {
     return candidates.find((k) => obj && k in obj) ?? fallback
 }
@@ -28,7 +34,11 @@ const C = {
     expenses: { stroke: '#F43F5E', fill: 'url(#gradExpenses)' },   // rose
 }
 
-export default function DebtProgressChart({ data, title = 'Debt Payoff Progress' }: Props) {
+export default function DebtProgressChart({
+    data,
+    title = 'ความคืบหน้าการปลดหนี้',
+    currency = '฿',
+}: Props) {
     const first: any = data?.[0] ?? {}
     const xKey = pickKey(first, ['label', 'monthLabel', 'date', 'month'], 'label')
     const remainingKey = pickKey(first, ['remainingDebt', 'totalRemaining', 'balance', 'remaining'], 'remainingDebt')
@@ -39,18 +49,13 @@ export default function DebtProgressChart({ data, title = 'Debt Payoff Progress'
     return (
         <Paper
             elevation={0}
-            sx={{
-                p: 2.5,
-                mt: 2,
-                borderRadius: 3,
-                border: '1px solid #E5E7EB',
-            }}
+            sx={{ p: 2.5, mt: 2, borderRadius: 3, border: '1px solid #E5E7EB' }}
         >
             <Typography sx={{ fontWeight: 700, color: '#0F172A', mb: 0.5 }}>
                 {title}
             </Typography>
             <Typography sx={{ color: '#64748B', fontSize: 12, mb: 1.5 }}>
-                Track your journey to debt freedom over time
+                ติดตามเส้นทางการปลดหนี้ของคุณตามช่วงเวลา
             </Typography>
 
             <Box sx={{ width: '100%', height: 380 }}>
@@ -83,26 +88,28 @@ export default function DebtProgressChart({ data, title = 'Debt Payoff Progress'
                             tickLine={{ stroke: '#E2E8F0' }}
                         />
                         <YAxis
-                            tickFormatter={(v) => `$${formatMoney(v)}`}
+                            tickFormatter={(v) => `${currency}${formatMoney(v)}`}
                             tick={{ fill: '#64748B', fontSize: 12 }}
                             axisLine={{ stroke: '#E2E8F0' }}
                             tickLine={{ stroke: '#E2E8F0' }}
-                            width={72}
+                            width={76}
                         />
                         <Tooltip
                             contentStyle={{ borderRadius: 8, borderColor: '#E5E7EB' }}
                             formatter={(value: any, name: any) =>
-                                typeof value === 'number' ? [`$${formatMoney(value)}`, name] : [value, name]
+                                typeof value === 'number'
+                                    ? [`${currency}${formatMoney(value)}`, name]
+                                    : [value, name]
                             }
                             labelStyle={{ color: '#0F172A' }}
                         />
                         <Legend wrapperStyle={{ color: '#475569', fontSize: 12 }} />
 
-                        {/* Remaining balance */}
+                        {/* ยอดหนี้คงเหลือรวม */}
                         {first[remainingKey] != null && (
                             <Area
                                 type="monotone"
-                                name="Total Remaining"
+                                name="ยอดคงเหลือรวม"
                                 dataKey={remainingKey}
                                 stroke={C.remaining.stroke}
                                 fill={C.remaining.fill}
@@ -110,11 +117,11 @@ export default function DebtProgressChart({ data, title = 'Debt Payoff Progress'
                                 dot={false}
                             />
                         )}
-                        {/* Cumulative paid */}
+                        {/* ยอดที่ชำระสะสม */}
                         {first[paidKey] != null && (
                             <Area
                                 type="monotone"
-                                name="Cumulative Paid"
+                                name="ยอดที่ชำระสะสม"
                                 dataKey={paidKey}
                                 stroke={C.paid.stroke}
                                 fill={C.paid.fill}
@@ -122,11 +129,11 @@ export default function DebtProgressChart({ data, title = 'Debt Payoff Progress'
                                 dot={false}
                             />
                         )}
-                        {/* Income */}
+                        {/* รายได้ */}
                         {first[incomeKey] != null && (
                             <Area
                                 type="monotone"
-                                name="Income"
+                                name="รายได้"
                                 dataKey={incomeKey}
                                 stroke={C.income.stroke}
                                 fill={C.income.fill}
@@ -134,11 +141,11 @@ export default function DebtProgressChart({ data, title = 'Debt Payoff Progress'
                                 dot={false}
                             />
                         )}
-                        {/* Expenses */}
+                        {/* รายจ่าย */}
                         {first[expensesKey] != null && (
                             <Area
                                 type="monotone"
-                                name="Expenses"
+                                name="รายจ่าย"
                                 dataKey={expensesKey}
                                 stroke={C.expenses.stroke}
                                 fill={C.expenses.fill}

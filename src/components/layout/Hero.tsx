@@ -21,7 +21,6 @@ export default function Hero() {
         <Box
             sx={(t) => ({
                 py: { xs: 6, md: 10 },
-                // ไล่เฉดสีบาง ๆ จาก primary → โปร่งใส
                 background: `linear-gradient(180deg,
           ${alpha(t.palette.primary.main, 0.10)} 0%,
           ${alpha(t.palette.primary.main, 0.05)} 55%,
@@ -32,19 +31,14 @@ export default function Hero() {
             <Container maxWidth="md" sx={{ textAlign: 'center' }}>
                 <Typography
                     variant="h3"
-                    sx={{
-                        fontWeight: 800,
-                        color: 'grey.900',
-                        letterSpacing: '-0.02em',
-                        mb: 1.5,
-                    }}
+                    sx={{ fontWeight: 800, color: 'grey.900', letterSpacing: '-0.02em', mb: 1.5 }}
                 >
-                    Take Control of Your Debt
+                    ควบคุมหนี้ของคุณได้ด้วยตัวเอง
                 </Typography>
 
                 <Typography sx={{ color: 'grey.700', maxWidth: 760, mx: 'auto' }}>
-                    Create a personalized debt payoff plan with our advanced calculator.
-                    Visualize your progress, optimize your strategy, and accelerate your journey to financial freedom.
+                    สร้างแผนปลดหนี้เฉพาะคุณด้วยเครื่องคำนวณของเรา
+                    มองเห็นความคืบหน้า ปรับกลยุทธ์ และเร่งเส้นทางสู่เสรีภาพทางการเงิน
                 </Typography>
 
                 <Stack
@@ -58,15 +52,15 @@ export default function Hero() {
                 >
                     <Feature
                         icon={<CheckCircleRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />}
-                        label="Multiple debt tracking"
+                        label="ติดตามหนี้หลายรายการ"
                     />
                     <Feature
                         icon={<ShowChartRoundedIcon sx={{ fontSize: 16, color: 'primary.main' }} />}
-                        label="Visual progress charts"
+                        label="กราฟความคืบหน้า"
                     />
                     <Feature
                         icon={<DownloadRoundedIcon sx={{ fontSize: 16, color: 'secondary.main' }} />}
-                        label="Exportable reports"
+                        label="ส่งออกเป็นรายงาน"
                     />
                 </Stack>
             </Container>

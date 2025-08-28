@@ -1,3 +1,4 @@
+// src/components/summary/IndividualDebtSummary.tsx
 'use client'
 
 import { Box, Paper, Typography } from '@mui/material'
@@ -5,23 +6,25 @@ import type { PerDebtSummary } from '@/types/debt'
 
 type Props = { items: PerDebtSummary[] }
 
+// แผนที่ชื่อ method → ไทย (รองรับค่าที่อาจหลงเหลือจากเวอร์ชันเก่า เช่น "fixed")
+const METHOD_TH: Record<string, string> = {
+    reducing: 'ลดต้นลดดอก',
+    flat: 'ดอกคงที่ (Flat)',
+    revolving: 'หมุนเวียน/บัตรเครดิต',
+    fixed: 'ดอกคงที่ (Flat)',
+}
+
 export default function IndividualDebtSummary({ items }: Props) {
     if (!items?.length) return null
 
     return (
         <Box sx={{ px: 3, mb: 4 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'grey.900' }}>
-                Individual Debt Summaries
+                สรุปแยกรายหนี้
             </Typography>
 
-            {/* แทน Grid: ใช้ flex + wrap */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 2,
-                }}
-            >
+            {/* ใช้ flex + wrap ให้การ์ดปรับเองตามความกว้าง */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                 {items.map((d) => (
                     <Paper
                         key={d.id}
@@ -32,7 +35,6 @@ export default function IndividualDebtSummary({ items }: Props) {
                             bgcolor: 'white',
                             border: '1px solid',
                             borderColor: 'grey.200',
-                            // responsive card: อย่างต่ำ 260px กว้างสุด ~400px
                             flex: '1 1 280px',
                             minWidth: 260,
                             maxWidth: 420,
@@ -40,15 +42,15 @@ export default function IndividualDebtSummary({ items }: Props) {
                     >
                         <Typography sx={{ fontWeight: 600, color: 'grey.900' }}>{d.name}</Typography>
                         <Typography sx={{ fontSize: 13, color: 'grey.600', mt: 0.5 }}>
-                            Method: {d.method}
+                            วิธีคิดดอก: {METHOD_TH[String(d.method)] ?? String(d.method)}
                         </Typography>
 
                         <Box sx={{ mt: 1.5 }}>
-                            <Row label="Monthly Payment" value={`฿${(d.monthlyPayment ?? 0).toLocaleString()}`} />
-                            <Row label="Term (months)" value={d.term?.toString() ?? '-'} />
-                            <Row label="Debt-free date" value={d.debtFreeDate ?? '-'} />
+                            <Row label="ค่างวดต่อเดือน" value={`฿${(d.monthlyPayment ?? 0).toLocaleString()}`} />
+                            <Row label="จำนวนงวด (เดือน)" value={d.term?.toString() ?? '-'} />
+                            <Row label="คาดว่าจะปลดหนี้วันที่" value={d.debtFreeDate ?? '-'} />
                             {d.totalInterest != null && (
-                                <Row label="Total Interest (est.)" value={`฿${d.totalInterest.toLocaleString()}`} />
+                                <Row label="ดอกเบี้ยรวม (ประมาณ)" value={`฿${d.totalInterest.toLocaleString()}`} />
                             )}
                         </Box>
                     </Paper>

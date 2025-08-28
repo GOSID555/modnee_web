@@ -1,6 +1,7 @@
 // src/app/page.tsx
 'use client'
 
+
 import { useMemo } from 'react'
 import {
   Box,
@@ -8,13 +9,13 @@ import {
   Paper,
   Typography,
   Stack,
-  Button,
   Divider,
+  Button,
 } from '@mui/material'
-import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
-import ShowChartRounded from '@mui/icons-material/ShowChartRounded'
-import DownloadRounded from '@mui/icons-material/DownloadRounded'
+import RestartAltIcon from '@mui/icons-material/RestartAlt'
+import CalculateIcon from '@mui/icons-material/Calculate'
 
+import Hero from '@/components/layout/Hero'
 import FinancialOverviewForm from '@/components/form/FinancialOverviewForm'
 import DebtListForm from '@/components/form/DebtListForm'
 import OverallSummary from '@/components/summary/OverallSummary'
@@ -23,226 +24,193 @@ import DebtProgressChart from '@/components/chart/DebtProgressChart'
 import AmortizationTable from '@/components/table/AmortizationTable'
 
 import { useDebtState } from '@/hooks/useDebtState'
-import { useDebtCalculator } from '@/hooks/useDebtCalculator'
-import { formatMoney } from '@/utils/format'
+import useDebtCalculator from '@/hooks/useDebtCalculator'
 
-function Hero() {
-  return (
-    <Box
-      sx={{
-        position: 'relative',
-        py: { xs: 6, md: 9 },
-        background:
-          'linear-gradient(180deg, #F0F7FF 0%, #F7FBFF 50%, #FFFFFF 100%)',
-        borderBottom: '1px solid #EEF2F7',
-        overflow: 'hidden',
-      }}
-    >
-      {/* soft glow */}
-      <Box
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'radial-gradient(1000px 300px at 50% -50px, rgba(99, 102, 241, .08), transparent 50%)',
-          pointerEvents: 'none',
-        }}
-      />
-      <Container>
-        <Typography
-          component="h1"
-          sx={{
-            fontSize: { xs: 32, md: 44 },
-            fontWeight: 800,
-            color: '#0F172A',
-            textAlign: 'center',
-            letterSpacing: -0.5,
-          }}
-        >
-          Take Control of Your Debt
-        </Typography>
-        <Typography
-          sx={{
-            mt: 1,
-            textAlign: 'center',
-            color: '#334155',
-            maxWidth: 780,
-            mx: 'auto',
-            lineHeight: 1.7,
-          }}
-        >
-          สร้างแผนปลดหนี้แบบเฉพาะตัว ดูความคืบหน้าด้วยกราฟ สรุปตารางผ่อน
-          และดาวน์โหลดรายงานได้ในคลิกเดียว
-        </Typography>
-
-        <Stack
-          direction="row"
-          spacing={3}
-          sx={{
-            mt: 2.5,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-            '& .chip': {
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 1,
-              px: 1.25,
-              py: 0.5,
-              borderRadius: 999,
-              fontSize: 13,
-              color: '#0B1220',
-              background: '#EBF3FF',
-            },
-          }}
-        >
-          <Box className="chip">
-            <CheckCircleRounded fontSize="small" /> Multiple debt tracking
-          </Box>
-          <Box className="chip">
-            <ShowChartRounded fontSize="small" /> Visual progress charts
-          </Box>
-          <Box className="chip">
-            <DownloadRounded fontSize="small" /> Exportable reports
-          </Box>
-        </Stack>
-      </Container>
-    </Box>
-  )
-}
 
 export default function Page() {
-  // 1) state ฟอร์ม (string-friendly)
+  /** 1) เก็บ state จากฟอร์ม (string-friendly สำหรับ NumericTextField) */
   const {
-    income,
-    setIncome,
-    expenses,
-    setExpenses,
-    debts,
-    setDebts,
-    incomeNum,
-    expensesNum,
+    income, setIncome,
+    expenses, setExpenses,
+    debts, setDebts,
+    incomeNum, expensesNum,
     resetAll,
   } = useDebtState()
 
-  // 2) คำนวณผลลัพธ์
+  /** 2) Logic คำนวณ (ทั้งหมดอยู่ใน hook — หน้าเพจไม่คำนวณเอง) */
   const {
-    overall,
-    perDebt,
-    schedule,
-    chartData,
-    issues,
-    calculate,
-    reset,
+    overall,         // ภาพรวมสรุป
+    perDebt,         // สรุปแยกรายหนี้
+    schedule,        // ตารางรวม (เดือน, principal, interest, balance)
+    chartData,       // ข้อมูลกราฟ
+    issues,          // ป้ายแจ้งเตือนต่อหนี้
+    calculate,       // trigger คำนวณ
+    reset,           // ล้างผลคำนวณ
+    makeTableRows,   // helper ทำแถวตาราง (map schedule → UI rows)
   } = useDebtCalculator()
 
-  const handleReset = () => {
-    resetAll()
-    reset()
-  }
+  /** ปุ่ม: ล้างค่า */
+  const handleReset = () => { resetAll(); reset() }
 
+  /** ปุ่ม: คำนวณ */
   const handleCalculate = () => {
     calculate({ incomeStr: income, expensesStr: expenses, debtsUI: debts })
   }
 
-  // 3) ตารางรวม (30 แถว/หน้าไปจัดที่คอมโพเนนต์ตาราง)
-  const tableRows = useMemo(() => {
-    let cumulative = 0
-    return schedule.map((r) => {
-      cumulative += r.payment
-      return {
-        month: r.month,
-        income: incomeNum,
-        expenses: expensesNum,
-        monthlyDebtPayment: r.payment,
-        principalPaid: r.principal,
-        interestPaid: r.interest,
-        remainingDebt: r.balance,
-        cumulativePaid: cumulative,
-      }
-    })
-  }, [schedule, incomeNum, expensesNum])
-
-  const availableForDebt = Math.max(0, incomeNum - expensesNum)
+  /** 3) แถวตาราง (ใช้ helper จาก hook — หน้าเพจไม่ทำสูตรเอง) */
+  const tableRows = useMemo(
+    () => makeTableRows(schedule, incomeNum, expensesNum),
+    [makeTableRows, schedule, incomeNum, expensesNum],
+  )
 
   return (
-    <Box sx={{ bgcolor: '#FFFFFF', minHeight: '100vh' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f7f9fc' }}>
+      {/* HERO ด้านบน */}
       <Hero />
 
-      <Container sx={{ py: 4 }}>
-        {/* Monthly Cash Flow */}
-
-        {/* ใช้ฟอร์มเดิม (สองช่องรายได้/รายจ่าย) */}
-        <FinancialOverviewForm
-          monthlyIncome={income}
-          monthlyExpenses={expenses}
-          onChangeIncome={setIncome}
-          onChangeExpenses={setExpenses}
-        />
-
-        {/* แถบแจ้งเตือนโทนอ่อน */}
-        <Box
+      <Container maxWidth="lg" sx={{ pb: 6 }}>
+        {/* การ์ดฟอร์มหลัก (กระแสเงินสด + รายการหนี้ + ปุ่ม) */}
+        <Paper
+          elevation={0}
           sx={{
-            m: 4,
-            mt: 1.5,
-            px: 1.5,
-            py: 1,
-            borderRadius: 2,
-            background: '#EEF6FF',
-            color: '#0B1220',
-            border: '1px solid #D8E9FF',
-            fontSize: 14,
+            p: { xs: 2.5, md: 3 },
+            mb: 4,
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: '#fff',
           }}
         >
-          Available for Debt Payment:{' '}
-          <b>${formatMoney(availableForDebt)}/month</b>
-        </Box>
+          {/* หัวการ์ด */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: 'grey.900' }}>
+              เพิ่มข้อมูลหนี้ของคุณ
+            </Typography>
+            <Typography sx={{ color: 'text.secondary' }}>
+              กรอกข้อมูลของแต่ละหนี้เพื่อสร้างแผนการปลดหนี้ที่เหมาะกับคุณ
+            </Typography>
+          </Box>
 
-
-        {/* Debts List */}
-        <DebtListForm debts={debts} onChangeDebts={setDebts} issuesByDebt={issues} />
-
-        {/* ปุ่มควบคุมล่างสุดของฟอร์ม */}
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{ justifyContent: 'flex-end', mb: 2 }}
-        >
-          <Button variant="outlined" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleCalculate}
-            startIcon={<ShowChartRounded />}
+          {/* กระแสเงินสด (รายรับ/รายจ่าย) */}
+          <Paper
+            variant="outlined"
             sx={{
-              background: '#2563EB',
-              '&:hover': { background: '#1E40AF' },
+              p: { xs: 2, md: 2.5 },
+              mb: 3,
+              borderRadius: 2,
+              bgcolor: '#f8fbff',
+              borderColor: 'rgba(59,130,246,0.25)',
             }}
           >
-            Calculate Payoff Plan
-          </Button>
-        </Stack>
+            <FinancialOverviewForm
+              monthlyIncome={income}
+              monthlyExpenses={expenses}
+              onChangeIncome={setIncome}
+              onChangeExpenses={setExpenses}
+            />
+          </Paper>
+
+          {/* รายการหนี้หลายก้อน */}
+          <DebtListForm
+            debts={debts}
+            onChangeDebts={setDebts}
+            issuesByDebt={issues}
+          />
+
+          {/* แถบปุ่มล่างสุดของการ์ด */}
+          <Divider sx={{ my: 3 }} />
+          <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
+            <Button
+              variant="outlined"
+              startIcon={<RestartAltIcon />}
+              onClick={handleReset}
+              sx={{ textTransform: 'none' }}
+            >
+              ล้างค่า
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<CalculateIcon />}
+              onClick={handleCalculate}
+              sx={{ textTransform: 'none' }}
+            >
+              คำนวณแผนการชำระ
+            </Button>
+          </Stack>
+        </Paper>
 
         {/* ผลลัพธ์หลังคำนวณ */}
         {overall && (
           <>
-            <Divider sx={{ my: 3 }} />
+            {/* สรุปภาพรวม */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2.5, md: 3 },
+                mb: 3,
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: '#fff',
+              }}
+            >
+              <OverallSummary
+                totalDebt={overall.totalDebt}
+                totalMonthlyPayment={overall.totalMonthlyPayment}
+                netIncome={overall.netIncome}
+                payoffMonths={overall.payoffMonths}
+                debtFreeDate={overall.debtFreeDate}
+                totalInterest={overall.totalInterest}
+              />
+            </Paper>
 
-            <OverallSummary
-              totalDebt={overall.totalDebt}
-              totalMonthlyPayment={overall.totalMonthlyPayment}
-              netIncome={overall.netIncome}
-              payoffMonths={overall.payoffMonths}
-              debtFreeDate={overall.debtFreeDate}
-              totalInterest={overall.totalInterest}
-            />
+            {/* สรุปแยกรายหนี้ */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2.5, md: 3 },
+                mb: 3,
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: '#fff',
+              }}
+            >
+              <IndividualDebtSummary items={perDebt} />
+            </Paper>
 
-            <IndividualDebtSummary items={perDebt} />
+            {/* กราฟความคืบหน้า */}
+            {chartData.length > 0 && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 2.5, md: 3 },
+                  mb: 3,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: '#fff',
+                }}
+              >
+                <DebtProgressChart data={chartData} />
+              </Paper>
+            )}
 
-            {chartData.length > 0 && <DebtProgressChart data={chartData} />}
-
+            {/* ตารางผ่อนชำระ */}
             {tableRows.length > 0 && (
-              <AmortizationTable rows={tableRows} title="Amortization Schedule" />
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 2.5, md: 3 },
+                  mb: 3,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: '#fff',
+                }}
+              >
+                <AmortizationTable rows={tableRows} />
+              </Paper>
             )}
           </>
         )}

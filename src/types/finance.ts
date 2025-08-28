@@ -1,6 +1,5 @@
 // src/utils/finance.ts
 import type {
-    InterestMethod,
     FlatAllocation,
     ScheduleRow,
     ValidationIssue,
@@ -19,7 +18,8 @@ export const addMonths = (start?: string, months = 0) => {
     return d.toISOString().slice(0, 10)
 }
 
-/** ---------- Amortizing / Reducing ---------- */
+/* =========================== Amortizing / Reducing ======================== */
+
 export function pmtReducing(P: number, apr: number, n: number) {
     if (n <= 0) return 0
     const i = apr / 100 / M
@@ -39,6 +39,7 @@ export function resolveReducingByMode(params: {
     const { principal: P, apr, lock, termMonths, pmtOverride } = params
     const i = apr / 100 / M
     const issues: ValidationIssue[] = []
+
     if (P <= 0) return { ok: true, pmt: 0, months: 0 }
 
     if (lock === 'term') {
@@ -63,7 +64,9 @@ export function resolveReducingByMode(params: {
     }
 
     // lock = 'payment'
-    if (pmtOverride == null || pmtOverride <= 0) return { ok: false, issues: [{ kind: 'INPUT_MISSING' }] }
+    if (pmtOverride == null || pmtOverride <= 0) {
+        return { ok: false, issues: [{ kind: 'INPUT_MISSING' }] }
+    }
 
     if (i === 0) {
         const n0 = Math.ceil(P / pmtOverride)
@@ -75,27 +78,35 @@ export function resolveReducingByMode(params: {
         return { ok: false, issues: [{ kind: 'NEGATIVE_AMORT', interestOnly }] }
     }
     const n = impliedMonthsFromPMT(P, i, pmtOverride)
-    return { ok: true, pmt: pmtOverride, months: Math.ceil(n), impliedMonths: Math.ceil(n) }
+    const m = Math.ceil(n)
+    return { ok: true, pmt: pmtOverride, months: m, impliedMonths: m }
 }
 
-export function scheduleReducing(P: number, apr: number, n: number, pmt?: number) {
+export function scheduleReducing(
+    P: number,
+    apr: number,
+    n: number,
+    pmt?: number,
+): { pmt: number; rows: ScheduleRow[]; totalInterest: number } {
+    if (P <= 0 || n <= 0) return { pmt: 0, rows: [], totalInterest: 0 }
+
     const i = apr / 100 / M
     const PMT = pmt ?? pmtReducing(P, apr, n)
     let bal = P
     const rows: ScheduleRow[] = []
     let totalInterest = 0
 
-    for (let m = 1; m <= Math.max(1, n); m++) {
+    for (let m = 1; m <= n; m++) {
         const interest = round2(bal * i)
         let principal = round2(PMT - interest)
         if (principal > bal) principal = bal
         const payment = round2(principal + interest)
         bal = round2(bal - principal)
-        totalInterest += interest
+        totalInterest = round2(totalInterest + interest)
         rows.push({ month: m, payment, principal, interest, balance: Math.max(0, bal) })
         if (bal <= 0.005) break
     }
-    return { pmt: round2(PMT), rows, totalInterest: round2(totalInterest) }
+    return { pmt: round2(PMT), rows, totalInterest }
 }
 
 function impliedMonthsFromPMT(P: number, i: number, PMT: number) {
@@ -103,13 +114,16 @@ function impliedMonthsFromPMT(P: number, i: number, PMT: number) {
     return -Math.log(1 - (P * i) / PMT) / Math.log(1 + i)
 }
 
-/** ---------- Flat rate / Hire purchase ---------- */
+/* =========================== Flat rate / Hire purchase ==================== */
+
 export function scheduleFlat(
     P: number,
     flatRate: number,
     n: number,
-    allocation: FlatAllocation = 'rule78'
-) {
+    allocation: FlatAllocation = 'rule78',
+): { pmt: number; rows: ScheduleRow[]; totalInterest: number } {
+    if (P <= 0 || n <= 0) return { pmt: 0, rows: [], totalInterest: 0 }
+
     const totalInterest = P * (flatRate / 100) * (n / 12)
     const PMT = (P + totalInterest) / n
     const S = (n * (n + 1)) / 2
@@ -119,9 +133,7 @@ export function scheduleFlat(
 
     for (let m = 1; m <= n; m++) {
         const interest =
-            allocation === 'equal'
-                ? totalInterest / n
-                : totalInterest * ((n - m + 1) / S)
+            allocation === 'equal' ? totalInterest / n : totalInterest * ((n - m + 1) / S)
         let principal = PMT - interest
         if (principal > bal) principal = bal
         bal = Math.max(0, bal - principal)
@@ -133,13 +145,14 @@ export function scheduleFlat(
             interest: round2(interest),
             balance: round2(bal),
         }
-        accInt += r.interest
+        accInt = round2(accInt + r.interest)
         rows.push(r)
     }
     return { pmt: round2(PMT), rows, totalInterest: round2(accInt) }
 }
 
-/** ---------- Revolving / Credit card (ADB approx) ---------- */
+/* =========================== Revolving / Credit card ====================== */
+
 export function scheduleRevolving(params: {
     balance0: number
     apr: number
@@ -147,33 +160,47 @@ export function scheduleRevolving(params: {
     minFloor?: number
     overridePayment?: number
     monthsLimit?: number
-}) {
-    let { balance0: bal, apr, minPct = 0.03, minFloor = 200, overridePayment, monthsLimit = 240 } = params
-    const rateDay = apr / 100 / DAYS
+}): { rows: ScheduleRow[]; totalInterest: number } {
+    let {
+        balance0: bal,
+        apr,
+        minPct = 0.03,
+        minFloor = 200,
+        overridePayment,
+        monthsLimit = 240,
+    } = params
 
+    if (bal <= 0) return { rows: [], totalInterest: 0 }
+
+    const rateDay = apr / 100 / DAYS
     const rows: ScheduleRow[] = []
     let totalInterest = 0
-    for (let m = 1; m <= monthsLimit && bal > 0.005; m++) {
-        const interest = round2(bal * rateDay * 30) // รอบบิล 30 วัน (approx)
+
+    for (let m = 1; m <= Math.max(1, monthsLimit) && bal > 0.005; m++) {
+        const interest = round2(bal * rateDay * 30) // รอบบิล ~30 วัน
         const minPay = Math.max(minFloor, bal * minPct)
         const target = overridePayment ?? minPay
         const payment = Math.min(round2(bal + interest), round2(target))
         const principal = Math.max(0, round2(payment - interest))
         bal = Math.max(0, round2(bal - principal))
-        totalInterest += interest
+        totalInterest = round2(totalInterest + interest)
         rows.push({ month: m, payment, principal, interest, balance: bal })
     }
-    return { rows, totalInterest: round2(totalInterest) }
+    return { rows, totalInterest }
 }
 
-/** ---------- รวมตารางจากหลายหนี้เป็นตารางเดียว ---------- */
+/* =========================== รวมตารางจากหลายหนี้ ========================= */
+
 export function aggregateSchedules(schedules: ScheduleRow[][]): ScheduleRow[] {
     const maxMonths = schedules.reduce((mx, s) => Math.max(mx, s.length), 0)
     const out: ScheduleRow[] = []
     for (let m = 1; m <= maxMonths; m++) {
-        let payment = 0, principal = 0, interest = 0, balance = 0
+        let payment = 0,
+            principal = 0,
+            interest = 0,
+            balance = 0
         for (const s of schedules) {
-            const row = s.find(r => r.month === m)
+            const row = s.find((r) => r.month === m)
             if (row) {
                 payment += row.payment
                 principal += row.principal
@@ -189,13 +216,19 @@ export function aggregateSchedules(schedules: ScheduleRow[][]): ScheduleRow[] {
             balance: round2(balance),
         })
     }
-    while (out.length > 0 && out[out.length - 1].balance === 0 && out[out.length - 1].payment === 0) {
+    // ตัดหางศูนย์ทิ้ง
+    while (
+        out.length > 0 &&
+        out[out.length - 1].balance === 0 &&
+        out[out.length - 1].payment === 0
+    ) {
         out.pop()
     }
     return out
 }
 
-/** ---------- ตัวช่วยแจ้งเตือนขั้นต่ำ/ข้อผิดปกติ ---------- */
+/* =========================== ตัวช่วยแจ้งเตือน/issue ====================== */
+
 export function minPaymentForRevolving(balance: number, minPct = 0.03, minFloor = 200) {
     return Math.max(minFloor, balance * minPct)
 }
@@ -204,32 +237,30 @@ export function makeIssue(kind: ValidationIssueKind, extra?: Partial<ValidationI
     return { kind, ...extra }
 }
 
-/* ==========================================================================
-   ตารางรวมสำหรับ UI (ย้ายมาที่ไฟล์นี้ให้เป็นแหล่งคำนวณเดียว)
-   ========================================================================== */
+/* =========================== ตารางรวมสำหรับ UI =========================== */
 
 export type DebtInput =
     | {
         method: 'reducing'
         amount: number
         interestRate: number // APR %
-        term?: number                 // ถ้า lock=term
-        monthlyPayment?: number       // ถ้า lock=payment
+        term?: number // ถ้า lock=term
+        monthlyPayment?: number // ถ้า lock=payment
     }
     | {
         method: 'flat'
         amount: number
-        interestRate: number          // flat rate %
+        interestRate: number // flat rate %
         term: number
         allocation?: 'rule78' | 'equal'
     }
     | {
         method: 'revolving'
         amount: number
-        interestRate: number          // APR %
-        minPct?: number               // 0.03 = 3%
-        minFloor?: number             // 200
-        monthlyPayment?: number       // override ค่างวดคงที่
+        interestRate: number // APR %
+        minPct?: number // 0.03 = 3%
+        minFloor?: number // 200
+        monthlyPayment?: number // override ค่างวดคงที่
     }
 
 export type AmortizationRow = {
@@ -249,7 +280,7 @@ export function buildAmortizationRows(
     monthlyExpenses: number,
     debts: DebtInput[],
 ): AmortizationRow[] {
-    const schedules = debts.map(d => {
+    const schedules = debts.map((d) => {
         if (d.method === 'reducing') {
             if (d.monthlyPayment && !d.term) {
                 const r = resolveReducingByMode({
@@ -261,13 +292,18 @@ export function buildAmortizationRows(
                 const n = r.ok ? r.months : 0
                 return scheduleReducing(d.amount, d.interestRate, n, d.monthlyPayment)
             }
-            return scheduleReducing(d.amount, d.interestRate, Math.max(0, Math.round(d.term ?? 0)))
+            return scheduleReducing(
+                d.amount,
+                d.interestRate,
+                Math.max(0, Math.round(d.term ?? 0)),
+            )
         }
 
         if (d.method === 'flat') {
             return scheduleFlat(d.amount, d.interestRate, d.term, d.allocation ?? 'rule78')
         }
 
+        // revolving
         return scheduleRevolving({
             balance0: d.amount,
             apr: d.interestRate,
@@ -278,10 +314,10 @@ export function buildAmortizationRows(
         })
     })
 
-    const merged = aggregateSchedules(schedules.map(s => s.rows))
+    const merged = aggregateSchedules(schedules.map((s) => s.rows))
 
     let cumulative = 0
-    return merged.map(r => {
+    return merged.map((r) => {
         cumulative = round2(cumulative + r.payment)
         return {
             month: r.month,
