@@ -120,8 +120,9 @@ export default function AmortizationTable({ rows, title = 'ตารางกำ
 
             <Divider sx={{ mb: 1.5 }} />
 
-            {/* Table */}
-            <Table size="small" aria-label="amortization schedule">
+            {/* Table (responsive overflow on small screens) */}
+            <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <Table size="small" aria-label="amortization schedule" sx={{ minWidth: 1000 }}>
                 <TableHead>
                     <TableRow
                         sx={{
@@ -137,10 +138,12 @@ export default function AmortizationTable({ rows, title = 'ตารางกำ
                         }}
                     >
                         <TableCell>เดือนที่</TableCell>
-                        {debtNames.length > 0 && <TableCell>หนี้</TableCell>}
+                        {debtNames.length > 0 && <TableCell>ชื่อหนี้</TableCell>}
+                        <TableCell align="right">รายได้ (฿)</TableCell>
+                        <TableCell align="right">รายจ่าย (฿)</TableCell>
                         <TableCell align="right">เงินต้น (฿)</TableCell>
                         <TableCell align="right">ดอกเบี้ย (฿)</TableCell>
-                        <TableCell align="right">ยอดชำระ/เดือน (฿)</TableCell>
+                        <TableCell align="right">ค่างวดต่อเดือน (฿)</TableCell>
                         <TableCell align="right">ยอดคงเหลือ (฿)</TableCell>
                     </TableRow>
                 </TableHead>
@@ -166,6 +169,12 @@ export default function AmortizationTable({ rows, title = 'ตารางกำ
                                 </TableCell>
                             )}
                             <TableCell align="right">
+                                ฿ {formatMoney((r as any).income ?? 0)}
+                            </TableCell>
+                            <TableCell align="right">
+                                ฿ {formatMoney((r as any).expenses ?? 0)}
+                            </TableCell>
+                            <TableCell align="right">
                                 ฿ {formatMoney((r as any).principal ?? (r as any).principalPaid ?? 0)}
                             </TableCell>
                             <TableCell align="right" sx={{ color: '#EF4444', fontWeight: 600 }}>
@@ -182,13 +191,18 @@ export default function AmortizationTable({ rows, title = 'ตารางกำ
 
                     {paged.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={debtNames.length > 0 ? 6 : 5} align="center" sx={{ py: 4, color: 'grey.600' }}>
+                            <TableCell
+                                colSpan={debtNames.length > 0 ? 8 : 7}
+                                align="center"
+                                sx={{ py: 4, color: 'grey.600' }}
+                            >
                                 ไม่พบข้อมูล
                             </TableCell>
                         </TableRow>
                     )}
                 </TableBody>
             </Table>
+            </Box>
 
             {/* Footer / Pagination */}
             <Stack

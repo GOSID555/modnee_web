@@ -151,7 +151,7 @@ export default function DebtListForm({ debts, onChangeDebts, issuesByDebt }: Pro
         onChangeDebts(debts.map((d) => (d.id === id ? { ...d, ...p } : d)))
 
     return (
-        <Box sx={{ px: 3, mb: 4 }}>
+        <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6" sx={{ flex: 1, fontWeight: 700, color: 'grey.900' }}>
                     รายการหนี้ของคุณ

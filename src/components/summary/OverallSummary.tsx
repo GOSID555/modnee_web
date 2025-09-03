@@ -96,7 +96,7 @@ export default function OverallSummary({
                     สรุปการปลดหนี้ของคุณ
                 </Typography>
                 <Typography sx={{ color: '#475569', fontSize: 13, mt: 0.5 }}>
-                    คาดการณ์เส้นทางการปลดหนี้จากข้อมูลและแผนการชำระปัจจุบันของคุณ
+                    ภาพรวมสรุปหนี้จากข้อมูลและแผนการชำระปัจจุบันของคุณ
                 </Typography>
             </Box>
 
@@ -113,8 +113,8 @@ export default function OverallSummary({
                         color="indigo"
                         icon={<EventAvailableRounded />}
                         title="วันที่คาดว่าจะปลดหนี้"
-                        value={debtFreeDate}
-                        caption={`${years} ปี ${months} เดือน`}
+                        value={`${years} ปี ${months} เดือน`}
+                        caption="วันที่เหลือ"
                     />
                 </Box>
 
@@ -143,8 +143,8 @@ export default function OverallSummary({
                         color="emerald"
                         icon={<SavingsRounded />}
                         title="เงินคงเหลือต่อเดือน"
-                        value={`฿${formatMoney(netIncome)}`}
-                        caption="หลังหักรายจ่าย"
+                        value={`฿${formatMoney(netIncome - totalMonthlyPayment)}`}
+                        caption="หลังหักรายจ่ายและหนี้"
                     />
                 </Box>
             </Box>

@@ -24,21 +24,28 @@ export default function Hero() {
                 background: `linear-gradient(180deg,
           ${alpha(t.palette.primary.main, 0.10)} 0%,
           ${alpha(t.palette.primary.main, 0.05)} 55%,
-          transparent 100%)`,
-                borderBottom: `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
+          transparent 100%)`
+
             })}
         >
             <Container maxWidth="md" sx={{ textAlign: 'center' }}>
                 <Typography
-                    variant="h3"
-                    sx={{ fontWeight: 800, color: 'grey.900', letterSpacing: '-0.02em', mb: 1.5 }}
+                    component="h1"
+                    sx={{
+                        fontWeight: 800,
+                        color: 'grey.900',
+                        letterSpacing: '-0.02em',
+                        mb: 1.5,
+                        fontSize: { xs: 28, sm: 34, md: 40 },
+                        lineHeight: 1.2,
+                    }}
                 >
-                    ควบคุมหนี้ของคุณได้ด้วยตัวเอง
+                    บริหารหนี้ของคุณอย่างมั่นใจ
                 </Typography>
 
                 <Typography sx={{ color: 'grey.700', maxWidth: 760, mx: 'auto' }}>
-                    สร้างแผนปลดหนี้เฉพาะคุณด้วยเครื่องคำนวณของเรา
-                    มองเห็นความคืบหน้า ปรับกลยุทธ์ และเร่งเส้นทางสู่เสรีภาพทางการเงิน
+
+                    วางแผนและจัดการหนี้ด้วยเครื่องมือคำนวณที่ออกแบบมาเพื่อคุณ ติดตามความคืบหน้า ปรับกลยุทธ์การชำระ และก้าวสู่ความมั่นคงทางการเงินอย่างยั่งยืน
                 </Typography>
 
                 <Stack
@@ -52,15 +59,15 @@ export default function Hero() {
                 >
                     <Feature
                         icon={<CheckCircleRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />}
-                        label="ติดตามหนี้หลายรายการ"
+                        label="รองรับการจัดการหนี้หลายบัญชี"
                     />
                     <Feature
                         icon={<ShowChartRoundedIcon sx={{ fontSize: 16, color: 'primary.main' }} />}
-                        label="กราฟความคืบหน้า"
+                        label="แสดงความคืบหน้าผ่านกราฟชัดเจน"
                     />
                     <Feature
                         icon={<DownloadRoundedIcon sx={{ fontSize: 16, color: 'secondary.main' }} />}
-                        label="ส่งออกเป็นรายงาน"
+                        label="ส่งออกข้อมูลในรูปแบบรายงาน"
                     />
                 </Stack>
             </Container>

@@ -67,7 +67,7 @@ export default function Page() {
     <Box sx={{ minHeight: '100vh', bgcolor: '#f7f9fc' }}>
       {/* HERO ด้านบน */}
       <Hero />
-
+      <Box sx={{ height: 10 }}></Box>
       <Container maxWidth="lg" sx={{ pb: 6 }}>
         {/* การ์ดฟอร์มหลัก (กระแสเงินสด + รายการหนี้ + ปุ่ม) */}
         <Paper
@@ -118,7 +118,7 @@ export default function Page() {
           />
 
           {/* แถบปุ่มล่างสุดของการ์ด */}
-          <Divider sx={{ my: 3 }} />
+
           <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
             <Button
               variant="outlined"

@@ -24,7 +24,7 @@ export default function FinancialOverviewForm({
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                 <Paper
-                    elevation={2}
+                    elevation={0}
                     sx={{
                         p: 3,
                         flex: '1 1 320px',
@@ -48,7 +48,7 @@ export default function FinancialOverviewForm({
                 </Paper>
 
                 <Paper
-                    elevation={2}
+                    elevation={0}
                     sx={{
                         p: 3,
                         flex: '1 1 320px',
